@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TypeGap.Extensions
 {
-    public static class ReflectionExtensions
+    internal static class ReflectionExtensions
     {
         public static bool IsNullable(this Type type)
         {

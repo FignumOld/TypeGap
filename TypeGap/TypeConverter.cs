@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TypeLite;
 
-namespace TypeGap.Generation
+namespace TypeGap
 {
     public class TypeConverter
     {

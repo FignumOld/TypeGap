@@ -14,6 +14,7 @@ namespace TypeGap
 {
     public class TypeFluent
     {
+        private List<Type> _hubs = new List<Type>();
         private List<Type> _controllers = new List<Type>();
         private List<Type> _general = new List<Type>();
 
@@ -42,6 +43,20 @@ namespace TypeGap
             return AddWebApi(typeof(T));
         }
 
+        public TypeFluent AddSignalRHub<T>()
+        {
+            return AddSignalRHub(typeof(T));
+        }
+
+        public TypeFluent AddSignalRHub(Type t)
+        {
+            if (t.BaseType == null || t.BaseType.FullName == null || !t.BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
+                throw new ArgumentException("Type must directly derive from the Hub type.");
+
+            _hubs.Add(t);
+            return this;
+        }
+            
         public TypeFluidOutput Build()
         {
             var services = new StringWriter();
@@ -54,6 +69,9 @@ namespace TypeGap
 
             var webapi = new WebApiGenerator(fluent);
             webapi.WriteServices(_controllers.ToArray(), servicesWriter);
+
+            var signalr = new SignalRGenerator();
+            signalr.WriteHubs(_hubs.ToArray(), fluent, servicesWriter);
 
             ProcessTypes(_general, fluent);
 
