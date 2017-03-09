@@ -1,0 +1,15 @@
+﻿<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>TypeGap</id>
+    <version>$version$</version>
+    <title>TypeGap</title>
+    <authors>caesay, other contributers</authors>
+    <owners>caesay</owners>
+    <projectUrl>https://github.com/BluestoneEU/TypeGap</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>A library to bridge the gap between C# (specifically asp.net) and typescript.</description>
+    <copyright>Copyright 2017 Bluestone</copyright>
+    <tags>C# ASP TypeScript Generation StronglyTyped</tags>
+  </metadata>
+</package>

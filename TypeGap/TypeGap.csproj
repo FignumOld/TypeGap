@@ -87,6 +87,7 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="TypeGap.nuspec" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources\AjaxService.ts" />
