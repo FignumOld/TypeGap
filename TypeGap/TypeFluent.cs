@@ -17,6 +17,7 @@ namespace TypeGap
         private List<Type> _hubs = new List<Type>();
         private List<Type> _controllers = new List<Type>();
         private List<Type> _general = new List<Type>();
+        private bool _constEnums = true;
 
         public TypeFluent Add(Type t)
         {
@@ -64,7 +65,7 @@ namespace TypeGap
 
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
-            fluent.AsConstEnums(false);
+            fluent.AsConstEnums(_constEnums);
             fluent.WithIndentation("    ");
 
             var webapi = new WebApiGenerator(fluent);
@@ -75,8 +76,35 @@ namespace TypeGap
 
             ProcessTypes(_general, fluent);
 
-            var tsEnumDefinitions = fluent.Generate(TsGeneratorOutput.Enums);
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
+
+            var tsEnumDefinitions = fluent.Generate(TsGeneratorOutput.Enums);
+
+            if (!_constEnums) {
+                ScriptBuilder sb = new ScriptBuilder("    ");
+                sb.AppendLine();
+                var enums = fluent.ModelBuilder.Build().Enums;
+                var namespaces = enums
+                    .Select(e => e.Type.Namespace.Split('.'))
+                    .SelectMany(parts => parts.Select((p, i) => String.Join(".", parts.Take(i + 1))))
+                    .Distinct()
+                    .OrderBy(s => s)
+                    .ToArray();
+
+                sb.AppendLine("const wnd: any = window;");
+                foreach (var space in namespaces)
+                {
+                    sb.AppendLine($"wnd.{space} = wnd.{space} || {{}};");
+                }
+
+                sb.AppendLine();
+                foreach (var e in enums)
+                {
+                    sb.AppendLine($"wnd.{e.Type.FullName} = {e.Type.FullName};");
+                }
+
+                tsEnumDefinitions += sb.ToString();
+            }
 
             return new TypeFluidOutput
             {
@@ -84,6 +112,12 @@ namespace TypeGap
                 EnumsTS = tsEnumDefinitions,
                 ServicesTS = services.GetStringBuilder().ToString(),
             };
+        }
+
+        public TypeFluent WithConstEnums(bool value = true)
+        {
+            _constEnums = value;
+            return this;
         }
 
         public void Build(string definitionPath, string servicesPath, string enumsPath)

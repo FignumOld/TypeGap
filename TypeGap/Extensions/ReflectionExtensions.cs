@@ -29,6 +29,9 @@ namespace TypeGap.Extensions
 
         public static Type GetUnderlyingNullableType(this Type type)
         {
+            if (!type.IsGenericType)
+                return type;
+
             return type.GetGenericArguments().Single();
         }
 
