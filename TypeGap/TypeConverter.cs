@@ -11,6 +11,8 @@ namespace TypeGap
 {
     public class TypeConverter
     {
+        private readonly string _globalNamespace;
+        private readonly TypeScriptFluent _fluent;
         private static readonly Dictionary<Type, string> _cache;
 
         static TypeConverter()
@@ -40,12 +42,23 @@ namespace TypeGap
             _cache.Add(typeof(void), "void");
         }
 
-        public static bool IsComplexType(Type clrType)
+        public TypeConverter(string globalNamespace, TypeScriptFluent fluent)
+        {
+            _globalNamespace = globalNamespace;
+            _fluent = fluent;
+        }
+
+        public bool IsComplexType(Type clrType)
         {
             return !_cache.ContainsKey(clrType);
         }
 
-        public static string GetTypeScriptName(Type clrType, TypeScriptFluent fluent)
+        private string GetFullName(Type clrType)
+        {
+            return String.IsNullOrEmpty(_globalNamespace) ? GetFullName(clrType) : _globalNamespace + "." + clrType.Name;
+        }
+
+        public string GetTypeScriptName(Type clrType)
         {
             string result;
 
@@ -67,19 +80,19 @@ namespace TypeGap
             // Dictionaries -- these should come before IEnumerables, because they also implement IEnumerable
             if (clrType.IsIDictionary())
             {
-                return $"{{ [key: {GetTypeScriptName(clrType.GetGenericArguments()[0], fluent)}]: {GetTypeScriptName(clrType.GetGenericArguments()[1], fluent)} }}";
+                return $"{{ [key: {GetTypeScriptName(clrType.GetGenericArguments()[0])}]: {GetTypeScriptName(clrType.GetGenericArguments()[1])} }}";
             }
 
             if (clrType.IsArray)
             {
-                return GetTypeScriptName(clrType.GetElementType(), fluent) + "[]";
+                return GetTypeScriptName(clrType.GetElementType()) + "[]";
             }
 
             if (typeof(IEnumerable).IsAssignableFrom(clrType))
             {
                 if (clrType.IsGenericType)
                 {
-                    return GetTypeScriptName(clrType.GetGenericArguments()[0], fluent) + "[]";
+                    return GetTypeScriptName(clrType.GetGenericArguments()[0]) + "[]";
                 }
                 return "any[]";
             }
@@ -89,29 +102,29 @@ namespace TypeGap
 
             if (clrType.IsEnum)
             {
-                fluent.ModelBuilder.Add(clrType);
-                return clrType.FullName;
+                _fluent.ModelBuilder.Add(clrType);
+                return GetFullName(clrType);
             }
 
             if (clrType.IsClass || clrType.IsInterface)
             {
-                var name = clrType.FullName;
+                var name = GetFullName(clrType);
                 if (clrType.IsGenericType)
                 {
-                    name = clrType.FullName.Remove(clrType.FullName.IndexOf('`')) + "<";
+                    name = GetFullName(clrType).Remove(GetFullName(clrType).IndexOf('`')) + "<";
                     var count = 0;
                     foreach (var genericArgument in clrType.GetGenericArguments())
                     {
                         if (count++ != 0) name += ", ";
-                        name += GetTypeScriptName(genericArgument, fluent);
+                        name += GetTypeScriptName(genericArgument);
                     }
                     name += ">";
                 }
-                fluent.ModelBuilder.Add(clrType);
+                _fluent.ModelBuilder.Add(clrType);
                 return name;
             }
 
-            Console.WriteLine("WARNING: Unknown conversion for type: " + clrType.FullName);
+            Console.WriteLine("WARNING: Unknown conversion for type: " + GetFullName(clrType));
             return "any";
         }
     }

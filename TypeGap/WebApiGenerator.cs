@@ -14,10 +14,10 @@ namespace TypeGap
 {
     public class WebApiGenerator
     {
-        private TypeScriptFluent _fluent;
-        public WebApiGenerator(TypeScriptFluent fluent)
+        private readonly TypeConverter _converter;
+        public WebApiGenerator(TypeConverter converter)
         {
-            _fluent = fluent;
+            _converter = converter;
         }
 
         public void WriteServices(Type[] controllers, IndentedTextWriter writer)
@@ -99,7 +99,7 @@ namespace TypeGap
             var route = method.GetCustomAttribute<RouteAttribute>();
 
             var template = route?.Template ?? action.ActionName;
-            var returnString = TypeConverter.GetTypeScriptName(method.ReturnType, _fluent);
+            var returnString = _converter.GetTypeScriptName(method.ReturnType);
 
             var httpMethod = GetHttpMethod(action);
 
@@ -123,7 +123,7 @@ namespace TypeGap
             var post = parameters
                 .Where(p => !IsRouteParameter(p, routeTemplate))
                 .Where(p => p.GetCustomAttribute<FromUriAttribute>() == null)
-                .Where(p => TypeConverter.IsComplexType(p.ParameterType) || p.GetCustomAttribute<FromBodyAttribute>() != null)
+                .Where(p => _converter.IsComplexType(p.ParameterType) || p.GetCustomAttribute<FromBodyAttribute>() != null)
                 .SingleOrDefault();
 
             if (httpMethod == "get" && post != null)
@@ -147,7 +147,7 @@ namespace TypeGap
         private string BuildMethodParameters(MethodInfo method)
         {
             var param = method.GetParameters();
-            return String.Join(", ", param.Select(p => $"{p.Name}{(p.IsOptional ? "?" : "")}: {TypeConverter.GetTypeScriptName(p.ParameterType, _fluent)}"));
+            return String.Join(", ", param.Select(p => $"{p.Name}{(p.IsOptional ? "?" : "")}: {_converter.GetTypeScriptName(p.ParameterType)}"));
         }
 
         private bool IsRouteParameter(ParameterInfo param, string template)

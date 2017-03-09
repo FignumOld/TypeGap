@@ -14,7 +14,7 @@ namespace TypeGap
     {
         internal const string HUB_TYPE = "Microsoft.AspNet.SignalR.Hub";
 
-        private string GenerateHubs(Assembly assembly, TypeScriptFluent fluent)
+        private string GenerateHubs(Assembly assembly, TypeConverter converter)
         {
             var hubs = assembly.GetTypes()
                 .Where(t => t.BaseType != null && t.BaseType.FullName != null && t.BaseType.FullName.Contains(HUB_TYPE))
@@ -33,7 +33,7 @@ namespace TypeGap
             }
             scriptBuilder.AppendLineIndented("}");
             scriptBuilder.AppendLine();
-            hubs.ForEach(h => GenerateHubInterfaces(h, scriptBuilder, fluent));
+            hubs.ForEach(h => GenerateHubInterfaces(h, scriptBuilder, converter));
             // Generate client connection interfaces
             scriptBuilder.AppendLineIndented("interface SignalR {");
             using (scriptBuilder.IncreaseIndentation())
@@ -45,7 +45,7 @@ namespace TypeGap
             return scriptBuilder.ToString();
         }
 
-        public void WriteHubs(Type[] hubs, TypeScriptFluent fluent, IndentedTextWriter writer)
+        public void WriteHubs(Type[] hubs, TypeConverter converter, IndentedTextWriter writer)
         {
             var hubList = hubs.ToList();
             var scriptBuilder = new ScriptBuilder("    ");
@@ -58,7 +58,7 @@ namespace TypeGap
             }
             scriptBuilder.AppendLineIndented("}");
             scriptBuilder.AppendLine();
-            hubList.ForEach(h => GenerateHubInterfaces(h, scriptBuilder, fluent));
+            hubList.ForEach(h => GenerateHubInterfaces(h, scriptBuilder, converter));
             // Generate client connection interfaces
             scriptBuilder.AppendLineIndented("interface SignalR {");
             using (scriptBuilder.IncreaseIndentation())
@@ -71,7 +71,7 @@ namespace TypeGap
             writer.WriteLine(scriptBuilder.ToString());
         }
 
-        private void GenerateHubInterfaces(Type hubType, ScriptBuilder scriptBuilder, TypeScriptFluent fluent)
+        private void GenerateHubInterfaces(Type hubType, ScriptBuilder scriptBuilder, TypeConverter converter)
         {
             if (!hubType.BaseType.FullName.Contains(HUB_TYPE)) throw new ArgumentException("The supplied type does not appear to be a SignalR hub.", "hubType");
             // Build the client interface
@@ -84,7 +84,7 @@ namespace TypeGap
                 }
                 else
                 {
-                    GenerateMethods(scriptBuilder, hubType.BaseType.GetGenericArguments().First(), fluent);
+                    GenerateMethods(scriptBuilder, hubType.BaseType.GetGenericArguments().First(), converter);
                 }
             }
             scriptBuilder.AppendLineIndented("}");
@@ -93,7 +93,7 @@ namespace TypeGap
             scriptBuilder.AppendLineIndented(string.Format("interface I{0} {{", hubType.Name));
             using (scriptBuilder.IncreaseIndentation())
             {
-                GenerateMethods(scriptBuilder, hubType, fluent);
+                GenerateMethods(scriptBuilder, hubType, converter);
             }
             scriptBuilder.AppendLineIndented("}");
             scriptBuilder.AppendLine();
@@ -107,20 +107,20 @@ namespace TypeGap
             scriptBuilder.AppendLineIndented("}");
             scriptBuilder.AppendLine();
         }
-        private void GenerateMethods(ScriptBuilder scriptBuilder, Type type, TypeScriptFluent fluent)
+        private void GenerateMethods(ScriptBuilder scriptBuilder, Type type, TypeConverter converter)
         {
             type.GetMethods()
                 .Where(mi => mi.GetBaseDefinition().DeclaringType.Name == type.Name)
                 .OrderBy(mi => mi.Name)
                 .ToList()
-                .ForEach(m => scriptBuilder.AppendLineIndented(GenerateMethodDeclaration(m, fluent)));
+                .ForEach(m => scriptBuilder.AppendLineIndented(GenerateMethodDeclaration(m, converter)));
         }
-        private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeScriptFluent fluent)
+        private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeConverter converter)
         {
             var result = methodInfo.Name.ToCamelCase() + "(";
-            result += string.Join(", ", methodInfo.GetParameters().Select(param => param.Name + ": " + TypeConverter.GetTypeScriptName(param.ParameterType, fluent)));
+            result += string.Join(", ", methodInfo.GetParameters().Select(param => param.Name + ": " + converter.GetTypeScriptName(param.ParameterType)));
 
-            var returnTypeName = TypeConverter.GetTypeScriptName(methodInfo.ReturnType, fluent);
+            var returnTypeName = converter.GetTypeScriptName(methodInfo.ReturnType);
             returnTypeName = returnTypeName == "void" ? "void" : "ISignalRPromise<" + returnTypeName + ">";
             result += "): " + returnTypeName + ";";
             return result;

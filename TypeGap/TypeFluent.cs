@@ -18,6 +18,7 @@ namespace TypeGap
         private List<Type> _controllers = new List<Type>();
         private List<Type> _general = new List<Type>();
         private bool _constEnums = true;
+        private string _namespace;
 
         public TypeFluent Add(Type t)
         {
@@ -57,7 +58,7 @@ namespace TypeGap
             _hubs.Add(t);
             return this;
         }
-            
+
         public TypeFluidOutput Build()
         {
             var services = new StringWriter();
@@ -68,11 +69,16 @@ namespace TypeGap
             fluent.AsConstEnums(_constEnums);
             fluent.WithIndentation("    ");
 
-            var webapi = new WebApiGenerator(fluent);
+            var converter = new TypeConverter(_namespace, fluent);
+
+            if (!string.IsNullOrEmpty(_namespace))
+                fluent.WithModuleNameFormatter(m => _namespace);
+
+            var webapi = new WebApiGenerator(converter);
             webapi.WriteServices(_controllers.ToArray(), servicesWriter);
 
             var signalr = new SignalRGenerator();
-            signalr.WriteHubs(_hubs.ToArray(), fluent, servicesWriter);
+            signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
 
             ProcessTypes(_general, fluent);
 
@@ -80,12 +86,14 @@ namespace TypeGap
 
             var tsEnumDefinitions = fluent.Generate(TsGeneratorOutput.Enums);
 
-            if (!_constEnums) {
+            if (!_constEnums)
+            {
                 ScriptBuilder sb = new ScriptBuilder("    ");
                 sb.AppendLine();
                 var enums = fluent.ModelBuilder.Build().Enums;
                 var namespaces = enums
-                    .Select(e => e.Type.Namespace.Split('.'))
+                    .Select(e => converter.GetTypeScriptName(e.Type).Split('.'))
+                    .Select(arr => arr.Take(arr.Length - 1))
                     .SelectMany(parts => parts.Select((p, i) => String.Join(".", parts.Take(i + 1))))
                     .Distinct()
                     .OrderBy(s => s)
@@ -100,7 +108,8 @@ namespace TypeGap
                 sb.AppendLine();
                 foreach (var e in enums)
                 {
-                    sb.AppendLine($"wnd.{e.Type.FullName} = {e.Type.FullName};");
+                    var fullName = converter.GetTypeScriptName(e.Type);
+                    sb.AppendLine($"wnd.{fullName} = {fullName};");
                 }
 
                 tsEnumDefinitions += sb.ToString();
@@ -117,6 +126,12 @@ namespace TypeGap
         public TypeFluent WithConstEnums(bool value = true)
         {
             _constEnums = value;
+            return this;
+        }
+
+        public TypeFluent WithGlobalNamespace(string @namespace)
+        {
+            _namespace = @namespace;
             return this;
         }
 
