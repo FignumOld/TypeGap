@@ -20,14 +20,22 @@ namespace TypeGap
             _converter = converter;
         }
 
-        public void WriteServices(Type[] controllers, IndentedTextWriter writer)
+        public void WriteServices(Type[] controllers, IndentedTextWriter writer, bool writeAjaxHelper)
         {
             var config = new HttpConfiguration();
 
             var descriptors = controllers.Select(c => new HttpControllerDescriptor(config, c.Name.Replace("Controller", ""), c));
             var names = descriptors.Select(d => d.ControllerName).ToArray();
 
-            writer.WriteLine(Resx.AjaxService);
+            if (writeAjaxHelper)
+            {
+                writer.WriteLine(Resx.AjaxService);
+            }
+            else
+            {
+                writer.WriteLine("import { Ajax, IExtendedAjaxSettings } from \"./Ajax\";");
+            }
+
             writer.WriteLine();
 
             WriteStaticHelper(names, writer);

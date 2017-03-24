@@ -1,8 +1,43 @@
-﻿export interface IExtendedAjaxSettings extends JQueryAjaxSettings {
+﻿import * as moment from "moment";
+
+const dateTimeRegex = /^(?:\d{2}){1,2}-\d{2}-(?:\d{2}){1,2}T\d{1,2}:\d{1,2}:\d{1,2}(\.\d+)?$/;
+
+function translateAllDateTimes(obj: any) {
+    for (var key in obj) {
+        var val = obj[key];
+
+        if (typeof val == "object") {
+            val = translateAllDateTimes(val);
+        } else if (typeof val == "string" && dateTimeRegex.test(val)) {
+            val = moment(val).toDate();
+        }
+
+        obj[key] = val;
+    }
+    return obj;
+}
+
+export interface IExtendedAjaxSettings extends JQueryAjaxSettings {
     /**
      * Allows the default error handling to be suppressed.
      */
     preventDefaultErrorHandler?: boolean;
+}
+
+export function parseExceptionMessage(ex: any): string {
+    if (!!ex.responseText) {
+        ex = JSON.parse(ex.responseText);
+    }
+
+    var message: any;
+    if (!!ex.ExceptionMessage) {
+        message = ex.ExceptionMessage;
+    } else if (!!ex.Message) {
+        message = ex.Message;
+    } else {
+        message = ex;
+    }
+    return message;
 }
 
 export class Ajax {
@@ -33,6 +68,8 @@ export class Ajax {
 
         return $.ajax(url, settings).fail((jqXhr: JQueryXHR) => {
             this.defaultErrorHandler(settings, jqXhr);
+        }).then(v => {
+            return translateAllDateTimes(v);
         });
     }
 
@@ -43,6 +80,8 @@ export class Ajax {
 
         return $.ajax(url, settings).fail((jqXhr: JQueryXHR) => {
             this.defaultErrorHandler(settings, jqXhr);
+        }).then(v => {
+            return translateAllDateTimes(v);
         });
     }
 
@@ -51,13 +90,8 @@ export class Ajax {
 
         // Use durandal showMessage function if it's available, otherwise fallback to alert.
         var alertMethod = (<any>window).app ? (<any>window).app.showMessage : alert;
-        var ex = JSON.parse(jqXhr.responseText);
-        if (ex.ExceptionMessage != null) {
-            alertMethod(ex.ExceptionMessage);
-        } else if (ex.Message != null) {
-            alertMethod(ex.Message);
-        } else {
-            alertMethod(jqXhr.responseText);
-        }
+
+        var message = parseExceptionMessage(jqXhr);
+        alertMethod(message);
     }
 }

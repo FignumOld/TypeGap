@@ -19,6 +19,7 @@ namespace TypeGap
         private List<Type> _general = new List<Type>();
         private bool _constEnums = true;
         private string _namespace;
+        private bool _writeAjaxHelper = true;
 
         public TypeFluent Add(Type t)
         {
@@ -75,7 +76,7 @@ namespace TypeGap
                 fluent.WithModuleNameFormatter(m => _namespace);
 
             var webapi = new WebApiGenerator(converter);
-            webapi.WriteServices(_controllers.ToArray(), servicesWriter);
+            webapi.WriteServices(_controllers.ToArray(), servicesWriter, _writeAjaxHelper);
 
             var signalr = new SignalRGenerator();
             signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
@@ -132,6 +133,12 @@ namespace TypeGap
         public TypeFluent WithGlobalNamespace(string @namespace)
         {
             _namespace = @namespace;
+            return this;
+        }
+
+        public TypeFluent WithAjaxHelper(bool value = true)
+        {
+            _writeAjaxHelper = value;
             return this;
         }
 
