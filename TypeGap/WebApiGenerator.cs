@@ -58,11 +58,11 @@ namespace TypeGap
                 writer.WriteLine($"public readonly {n}: {n}Service;");
             }
 
-            writer.WriteLine("public constructor(hostname: string) {");
+            writer.WriteLine("public constructor(hostname: string, ajaxDefaults?: IExtendedAjaxSettings) {");
             writer.Indent++;
             foreach (var n in names)
             {
-                writer.WriteLine($"this.{n} = new {n}Service(hostname);");
+                writer.WriteLine($"this.{n} = new {n}Service(hostname, ajaxDefaults);");
             }
             writer.Indent--;
             writer.WriteLine("}");
@@ -84,10 +84,12 @@ namespace TypeGap
 
             writer.WriteLine($"export class {controller.ControllerName}Service {{");
             writer.Indent++;
-            writer.WriteLine("private hostname: string;");
-            writer.WriteLine("public constructor(hostname: string) {");
+            writer.WriteLine("private _hostname: string;");
+            writer.WriteLine("private _ajax: Ajax;");
+            writer.WriteLine("public constructor(hostname: string, ajaxDefaults?: IExtendedAjaxSettings) {");
             writer.Indent++;
-            writer.WriteLine("this.hostname = (hostname.substr(-1) == \"/\") ? hostname : hostname + \"/\";");
+            writer.WriteLine("this._hostname = (hostname.substr(-1) == \"/\") ? hostname : hostname + \"/\";");
+            writer.WriteLine("this._ajax = new Ajax(ajaxDefaults);");
             writer.Indent--;
             writer.WriteLine("}");
 
@@ -120,8 +122,8 @@ namespace TypeGap
 
             writer.WriteLine($"public {method.Name}({paramString}ajaxOptions?: IExtendedAjaxSettings): JQueryPromise<{returnString}> {{");
             writer.Indent++;
-            writer.WriteLine("var url = this.hostname + " + BuildUrlString(urlPrefix, template, getParameters) + ";");
-            writer.WriteLine($"return Ajax.{httpMethod}(url, {postParameter?.Name ?? "null"}, ajaxOptions);");
+            writer.WriteLine("var url = this._hostname + " + BuildUrlString(urlPrefix, template, getParameters) + ";");
+            writer.WriteLine($"return this._ajax.{httpMethod}(url, {postParameter?.Name ?? "null"}, ajaxOptions);");
             writer.Indent--;
             writer.WriteLine("}");
         }

@@ -18,9 +18,7 @@ function translateAllDateTimes(obj: any) {
 }
 
 export interface IExtendedAjaxSettings extends JQueryAjaxSettings {
-    /**
-     * Allows the default error handling to be suppressed.
-     */
+    errorHandler?: (settings: IExtendedAjaxSettings, jqXhr: JQueryXHR) => void;
     preventDefaultErrorHandler?: boolean;
 }
 
@@ -34,24 +32,39 @@ export function parseExceptionMessage(ex: any): string {
         message = ex.ExceptionMessage;
     } else if (!!ex.Message) {
         message = ex.Message;
+    } else if (!!ex.promise) {
+        message = "Unable to connect to the server.";
     } else {
         message = ex;
     }
     return message;
 }
 
-export class Ajax {
+export function defaultErrorHandler(settings: IExtendedAjaxSettings, jqXhr: JQueryXHR) {
+    if (settings.preventDefaultErrorHandler) return;
+    var alertMethod = (<any>window).app ? (<any>window).app.showMessage : alert;
+    var message = parseExceptionMessage(jqXhr);
+    alertMethod(message);
+}
 
-    private static ajaxDefaults: JQueryAjaxSettings = {
+export class Ajax {
+    private _ajaxDefaults: IExtendedAjaxSettings = {
         cache: false,
         dataType: "json",
         timeout: 120000,
-        crossDomain: false
+        crossDomain: false,
+        errorHandler: defaultErrorHandler,
     }
 
-    public static post(url: string, data: any = null, ajaxOptions: IExtendedAjaxSettings = null): JQueryPromise<any> {
+    constructor(ajaxDefaults?: IExtendedAjaxSettings) {
+        if (!!ajaxDefaults) {
+            this._ajaxDefaults = $.extend({}, this._ajaxDefaults, ajaxDefaults);
+        }
+    }
+
+    public post(url: string, data: any = null, ajaxOptions: IExtendedAjaxSettings = null): JQueryPromise<any> {
         //Apply custom ajaxsettings
-        var settings = $.extend({}, this.ajaxDefaults, ajaxOptions);
+        var settings: IExtendedAjaxSettings = $.extend({}, this._ajaxDefaults, ajaxOptions);
         settings.type = 'POST';
         // Allow data to be overridden by passing it in via ajaxOptions parameter.
         if (!settings.data) settings.data = data;
@@ -67,31 +80,21 @@ export class Ajax {
         }
 
         return $.ajax(url, settings).fail((jqXhr: JQueryXHR) => {
-            this.defaultErrorHandler(settings, jqXhr);
+            settings.errorHandler(settings, jqXhr);
         }).then(v => {
             return translateAllDateTimes(v);
         });
     }
 
-    public static get(url: string, data: any = null, ajaxOptions: IExtendedAjaxSettings = null) {
+    public get(url: string, data: any = null, ajaxOptions: IExtendedAjaxSettings = null) {
         //Apply custom ajaxsettings
-        var settings = $.extend({}, this.ajaxDefaults, ajaxOptions, { type: 'GET' });
+        var settings: IExtendedAjaxSettings = $.extend({}, this._ajaxDefaults, ajaxOptions, { type: 'GET' });
         settings.type = 'GET';
 
         return $.ajax(url, settings).fail((jqXhr: JQueryXHR) => {
-            this.defaultErrorHandler(settings, jqXhr);
+            settings.errorHandler(settings, jqXhr);
         }).then(v => {
             return translateAllDateTimes(v);
         });
-    }
-
-    private static defaultErrorHandler(settings: IExtendedAjaxSettings, jqXhr: JQueryXHR): JQueryPromise<any> {
-        if (settings.preventDefaultErrorHandler) return;
-
-        // Use durandal showMessage function if it's available, otherwise fallback to alert.
-        var alertMethod = (<any>window).app ? (<any>window).app.showMessage : alert;
-
-        var message = parseExceptionMessage(jqXhr);
-        alertMethod(message);
     }
 }
