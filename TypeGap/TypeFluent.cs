@@ -9,17 +9,17 @@ using System.Text;
 using System.Threading.Tasks;
 using TypeGap.Extensions;
 using TypeLite;
+using TypeLite.TsModels;
 
 namespace TypeGap
 {
     public class TypeFluent
     {
         private List<Type> _hubs = new List<Type>();
-        private List<Type> _controllers = new List<Type>();
         private List<Type> _general = new List<Type>();
         private bool _constEnums = true;
         private string _namespace;
-        private bool _writeAjaxHelper = true;
+        private Dictionary<Type, Integration> _integrations = new Dictionary<Type, Integration>();
 
         public TypeFluent Add(Type t)
         {
@@ -30,20 +30,6 @@ namespace TypeGap
         public TypeFluent Add<T>()
         {
             return Add(typeof(T));
-        }
-
-        public TypeFluent AddWebApi(Type t)
-        {
-            if (!typeof(System.Web.Http.ApiController).IsAssignableFrom(t))
-                throw new ArgumentException("Type must be assignable to System.Web.Http.ApiController");
-
-            _controllers.Add(t);
-            return this;
-        }
-
-        public TypeFluent AddWebApi<T>()
-        {
-            return AddWebApi(typeof(T));
         }
 
         public TypeFluent AddSignalRHub<T>()
@@ -71,12 +57,13 @@ namespace TypeGap
             fluent.WithIndentation("    ");
 
             var converter = new TypeConverter(_namespace, fluent);
+            fluent.WithDictionaryMemberFormatter(converter);
 
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            var webapi = new WebApiGenerator(converter);
-            webapi.WriteServices(_controllers.ToArray(), servicesWriter, _writeAjaxHelper);
+            foreach (var ig in _integrations.Values)
+                ig.WriteServices(converter, servicesWriter);
 
             var signalr = new SignalRGenerator();
             signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
@@ -136,12 +123,6 @@ namespace TypeGap
             return this;
         }
 
-        public TypeFluent WithAjaxHelper(bool value = true)
-        {
-            _writeAjaxHelper = value;
-            return this;
-        }
-
         public void Build(string definitionPath, string servicesPath, string enumsPath)
         {
             var output = Build();
@@ -158,6 +139,30 @@ namespace TypeGap
         public void Build(string outputDirectory)
         {
             Build(outputDirectory, "definitions.d.ts", "services.ts", "enums.ts");
+        }
+
+        internal void AddIntegrationItem<T>(Type t) where T : Integration, new()
+        {
+            var key = typeof(T);
+            InitIntegration<T>();
+            _integrations[key].Types.Add(t);
+        }
+
+        internal T GetIntegration<T>() where T : Integration, new()
+        {
+            var key = typeof(T);
+            InitIntegration<T>();
+            return (T)_integrations[key];
+        }
+
+        private void InitIntegration<T>() where T : Integration, new()
+        {
+            var key = typeof(T);
+            if (!_integrations.ContainsKey(key))
+            {
+                var integration = new T();
+                _integrations[key] = integration;
+            }
         }
 
         private static void ProcessTypes(IEnumerable<Type> types, TypeScriptFluent generator)
@@ -184,8 +189,14 @@ namespace TypeGap
                 if (clrTypeToUse.Namespace.StartsWith("System"))
                     continue;
 
+                if (clrTypeToUse.IsIDictionary())
+                    continue;
+
                 if (clrTypeToUse == typeof(string) || clrTypeToUse.IsPrimitive || clrTypeToUse == typeof(object)) continue;
 
+
+                bool isClassOrArray = clrTypeToUse.IsClass || clrTypeToUse.IsInterface;
+                TsModuleMember member = null;
                 if (clrTypeToUse.IsArray)
                 {
                     ProcessTypes(new[] { clrTypeToUse.GetElementType() }, generator);
@@ -196,12 +207,25 @@ namespace TypeGap
                     bool isEnumerable = typeof(IEnumerable).IsAssignableFrom(clrTypeToUse);
                     if (!isEnumerable)
                     {
-                        generator.ModelBuilder.Add(clrTypeToUse);
+                        member = generator.ModelBuilder.Add(clrTypeToUse, !isClassOrArray);
                     }
                 }
                 else
                 {
-                    generator.ModelBuilder.Add(clrTypeToUse);
+                    member = generator.ModelBuilder.Add(clrTypeToUse, !isClassOrArray);
+                }
+
+                if (isClassOrArray && member is TsClass classModel)
+                {
+                    var references = classModel.Properties
+                        .Where(model => !model.IsIgnored)
+                        .Select(m => m.PropertyType)
+                        .Concat(classModel.GenericArguments)
+                        .Select(m => m.Type)
+                        .Where(t => !t.IsIDictionary())
+                        .ToArray();
+
+                    ProcessTypes(references, generator);
                 }
             }
         }

@@ -55,7 +55,9 @@ namespace TypeGap
 
         private string GetFullName(Type clrType)
         {
-            return String.IsNullOrEmpty(_globalNamespace) ? GetFullName(clrType) : _globalNamespace + "." + clrType.Name;
+            if (clrType == null)
+                System.Diagnostics.Debugger.Break();
+            return String.IsNullOrEmpty(_globalNamespace) ? clrType.FullName : _globalNamespace + "." + clrType.Name;
         }
 
         public string GetTypeScriptName(Type clrType)

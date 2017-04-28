@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,7 +25,9 @@ namespace TypeGap.Extensions
 
         public static bool IsIDictionary(this Type type)
         {
-            return type.GetInterfaces().Any(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDictionary<,>));
+            return
+                type.GetInterfaces().Any(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IDictionary<,>)) ||
+                type.GetInterfaces().Any(t => t == typeof(IDictionary));
         }
 
         public static Type GetUnderlyingNullableType(this Type type)

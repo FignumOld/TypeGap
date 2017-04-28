@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.26403.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeGap", "TypeGap\TypeGap.csproj", "{A4F61C27-545F-4050-BCE1-9D6DDCEF7819}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeGap.WebApi", "TypeGap.WebApi\TypeGap.WebApi.csproj", "{BF711DC8-4E55-4404-BFE1-022C8149346C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeGap.Tests", "TypeGap.Tests\TypeGap.Tests.csproj", "{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +19,14 @@ Global
 		{A4F61C27-545F-4050-BCE1-9D6DDCEF7819}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4F61C27-545F-4050-BCE1-9D6DDCEF7819}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4F61C27-545F-4050-BCE1-9D6DDCEF7819}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF711DC8-4E55-4404-BFE1-022C8149346C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF711DC8-4E55-4404-BFE1-022C8149346C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF711DC8-4E55-4404-BFE1-022C8149346C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF711DC8-4E55-4404-BFE1-022C8149346C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
