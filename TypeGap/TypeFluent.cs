@@ -215,7 +215,8 @@ namespace TypeGap
                     member = generator.ModelBuilder.Add(clrTypeToUse, !isClassOrArray);
                 }
 
-                if (isClassOrArray && member is TsClass classModel)
+                var classModel = member as TsClass;
+                if (isClassOrArray && classModel != null)
                 {
                     var references = classModel.Properties
                         .Where(model => !model.IsIgnored)
