@@ -13,6 +13,6 @@
     <tags>C# ASP TypeScript Generation StronglyTyped</tags>
   </metadata>
   <files>
-    <file src="bin\Release" target="lib" />
+    <file src="bin\Release\**" target="lib" />
   </files>
 </package>
