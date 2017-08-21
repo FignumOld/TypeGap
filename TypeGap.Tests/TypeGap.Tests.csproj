@@ -67,10 +67,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TypeGap.WebApi\TypeGap.WebApi.csproj">
-      <Project>{bf711dc8-4e55-4404-bfe1-022c8149346c}</Project>
-      <Name>TypeGap.WebApi</Name>
-    </ProjectReference>
     <ProjectReference Include="..\TypeGap\TypeGap.csproj">
       <Project>{a4f61c27-545f-4050-bce1-9d6ddcef7819}</Project>
       <Name>TypeGap</Name>

@@ -16,14 +16,14 @@ namespace TypeGap.Extensions
             tsGenerator.SetMemberTypeFormatter((tsProperty, memberTypeName) =>
             {
                 var dictionaryInterface =
-                    tsProperty.PropertyType.Type.GetInterface(typeof(IDictionary<,>).Name) ??
-                    tsProperty.PropertyType.Type.GetInterface(typeof(IDictionary).Name);
+                    tsProperty.PropertyType.Type.GetDnxCompatible().GetInterface(typeof(IDictionary<,>).Name) ??
+                    tsProperty.PropertyType.Type.GetDnxCompatible().GetInterface(typeof(IDictionary).Name);
 
                 if (dictionaryInterface != null)
                 {
-                    if (dictionaryInterface.IsGenericType)
+                    if (dictionaryInterface.GetDnxCompatible().IsGenericType)
                     {
-                        var args = dictionaryInterface.GetGenericArguments();
+                        var args = dictionaryInterface.GetDnxCompatible().GetGenericArguments();
                         var t1 = conv.GetTypeScriptName(args[0]);
                         var t2 = conv.GetTypeScriptName(args[1]);
                         return $"{{ [key: {t1}]: {t2} }}";

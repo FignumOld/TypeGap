@@ -64,6 +64,7 @@ namespace TypeGap
         {
             string result;
 
+
             if (clrType.IsNullable())
             {
                 clrType = clrType.GetUnderlyingNullableType();
@@ -82,7 +83,7 @@ namespace TypeGap
             // Dictionaries -- these should come before IEnumerables, because they also implement IEnumerable
             if (clrType.IsIDictionary())
             {
-                return $"{{ [key: {GetTypeScriptName(clrType.GetGenericArguments()[0])}]: {GetTypeScriptName(clrType.GetGenericArguments()[1])} }}";
+                return $"{{ [key: {GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0])}]: {GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[1])} }}";
             }
 
             if (clrType.IsArray)
@@ -90,11 +91,11 @@ namespace TypeGap
                 return GetTypeScriptName(clrType.GetElementType()) + "[]";
             }
 
-            if (typeof(IEnumerable).IsAssignableFrom(clrType))
+            if (typeof(IEnumerable).GetDnxCompatible().IsAssignableFrom(clrType))
             {
-                if (clrType.IsGenericType)
+                if (clrType.GetDnxCompatible().IsGenericType)
                 {
-                    return GetTypeScriptName(clrType.GetGenericArguments()[0]) + "[]";
+                    return GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0]) + "[]";
                 }
                 return "any[]";
             }
@@ -102,20 +103,20 @@ namespace TypeGap
             if (clrType.Namespace.StartsWith("System."))
                 return "any";
 
-            if (clrType.IsEnum)
+            if (clrType.GetDnxCompatible().IsEnum)
             {
                 _fluent.ModelBuilder.Add(clrType);
                 return GetFullName(clrType);
             }
 
-            if (clrType.IsClass || clrType.IsInterface)
+            if (clrType.GetDnxCompatible().IsClass || clrType.GetDnxCompatible().IsInterface)
             {
                 var name = GetFullName(clrType);
-                if (clrType.IsGenericType)
+                if (clrType.GetDnxCompatible().IsGenericType)
                 {
                     name = GetFullName(clrType).Remove(GetFullName(clrType).IndexOf('`')) + "<";
                     var count = 0;
-                    foreach (var genericArgument in clrType.GetGenericArguments())
+                    foreach (var genericArgument in clrType.GetDnxCompatible().GetGenericArguments())
                     {
                         if (count++ != 0) name += ", ";
                         name += GetTypeScriptName(genericArgument);

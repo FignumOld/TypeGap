@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeGap.WebApi", "TypeGap.W
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeGap.Tests", "TypeGap.Tests\TypeGap.Tests.csproj", "{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TypeLiteForTypeGap", "LukasKabrt-typelite-076249af9d12\TypeLite\TypeLiteForTypeGap.csproj", "{2BA8D2D3-2925-437B-BE51-F31440FF42E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeGap.AspNetCore", "TypeGap.AspNetCore\TypeGap.AspNetCore.csproj", "{71105258-5C58-4AB2-A387-637A14188D01}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1529F8C4-D981-4B7C-B28C-BD2BB6BD1A2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2BA8D2D3-2925-437B-BE51-F31440FF42E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2BA8D2D3-2925-437B-BE51-F31440FF42E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2BA8D2D3-2925-437B-BE51-F31440FF42E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2BA8D2D3-2925-437B-BE51-F31440FF42E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71105258-5C58-4AB2-A387-637A14188D01}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71105258-5C58-4AB2-A387-637A14188D01}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71105258-5C58-4AB2-A387-637A14188D01}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71105258-5C58-4AB2-A387-637A14188D01}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

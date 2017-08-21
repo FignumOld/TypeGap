@@ -1,13 +1,14 @@
 ﻿using System;
-using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using TypeGap.Extensions;
+using TypeGap.Util;
 using TypeLite;
 using TypeLite.TsModels;
 
@@ -19,7 +20,8 @@ namespace TypeGap
         private List<Type> _general = new List<Type>();
         private bool _constEnums = true;
         private string _namespace;
-        private Dictionary<Type, Integration> _integrations = new Dictionary<Type, Integration>();
+        private List<ApiControllerDesc> _apis = new List<ApiControllerDesc>();
+        private string _promiseType = "Promise";
 
         public TypeFluent Add(Type t)
         {
@@ -32,17 +34,35 @@ namespace TypeGap
             return Add(typeof(T));
         }
 
-        public TypeFluent AddSignalRHub<T>()
+        //public TypeFluent AddSignalRHub<T>()
+        //{
+        //    return AddSignalRHub(typeof(T));
+        //}
+
+        //public TypeFluent AddSignalRHub(Type t)
+        //{
+        //    if (t.BaseType == null || t.BaseType.FullName == null || !t.BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
+        //        throw new ArgumentException("Type must directly derive from the Hub type.");
+
+        //    _hubs.Add(t);
+        //    return this;
+        //}
+
+        public ApiControllerDesc AddApiDescription(string name, string route = null)
         {
-            return AddSignalRHub(typeof(T));
+            var api = new ApiControllerDesc();
+            api.ControllerName = name;
+
+            if (!String.IsNullOrWhiteSpace(route))
+                api.RouteTemplate = route;
+
+            _apis.Add(api);
+            return api;
         }
 
-        public TypeFluent AddSignalRHub(Type t)
+        public TypeFluent AddApiObject(Type type)
         {
-            if (t.BaseType == null || t.BaseType.FullName == null || !t.BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
-                throw new ArgumentException("Type must directly derive from the Hub type.");
-
-            _hubs.Add(t);
+            _apis.Add(ObjectToDescriptionConverter.Convert(type));
             return this;
         }
 
@@ -62,11 +82,11 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            foreach (var ig in _integrations.Values)
-                ig.WriteServices(converter, servicesWriter);
+            var apiGen = new ApiGenerator(converter, _promiseType);
+            apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
-            var signalr = new SignalRGenerator();
-            signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
+            //var signalr = new SignalRGenerator();
+            //signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
 
             ProcessTypes(_general, fluent);
 
@@ -123,6 +143,12 @@ namespace TypeGap
             return this;
         }
 
+        public TypeFluent WithPromiseType(string promise)
+        {
+            _promiseType = promise;
+            return this;
+        }
+
         public void Build(string definitionPath, string servicesPath, string enumsPath)
         {
             var output = Build();
@@ -141,40 +167,16 @@ namespace TypeGap
             Build(outputDirectory, "definitions.d.ts", "services.ts", "enums.ts");
         }
 
-        internal void AddIntegrationItem<T>(Type t) where T : Integration, new()
-        {
-            var key = typeof(T);
-            InitIntegration<T>();
-            _integrations[key].Types.Add(t);
-        }
-
-        internal T GetIntegration<T>() where T : Integration, new()
-        {
-            var key = typeof(T);
-            InitIntegration<T>();
-            return (T)_integrations[key];
-        }
-
-        private void InitIntegration<T>() where T : Integration, new()
-        {
-            var key = typeof(T);
-            if (!_integrations.ContainsKey(key))
-            {
-                var integration = new T();
-                _integrations[key] = integration;
-            }
-        }
-
         private static void ProcessTypes(IEnumerable<Type> types, TypeScriptFluent generator)
         {
             foreach (var clrType in types.Where(t => t != typeof(void)))
             {
                 var clrTypeToUse = clrType;
-                if (typeof(Task).IsAssignableFrom(clrTypeToUse))
+                if (typeof(Task).GetDnxCompatible().IsAssignableFrom(clrTypeToUse))
                 {
-                    if (clrTypeToUse.IsGenericType)
+                    if (clrTypeToUse.GetDnxCompatible().IsGenericType)
                     {
-                        clrTypeToUse = clrTypeToUse.GetGenericArguments()[0];
+                        clrTypeToUse = clrTypeToUse.GetDnxCompatible().GetGenericArguments()[0];
                     }
                     else continue; // Ignore non-generic Task as we can't know what type it will really be
                 }
@@ -183,7 +185,7 @@ namespace TypeGap
                     clrTypeToUse = clrTypeToUse.GetUnderlyingNullableType();
 
                 // Ignore compiler generated types
-                if (Attribute.GetCustomAttribute(clrTypeToUse, typeof(CompilerGeneratedAttribute)) != null)
+                if (clrTypeToUse.GetDnxCompatible().GetCustomAttribute(typeof(CompilerGeneratedAttribute)) != null)
                     continue;
 
                 if (clrTypeToUse.Namespace.StartsWith("System"))
@@ -192,19 +194,19 @@ namespace TypeGap
                 if (clrTypeToUse.IsIDictionary())
                     continue;
 
-                if (clrTypeToUse == typeof(string) || clrTypeToUse.IsPrimitive || clrTypeToUse == typeof(object)) continue;
+                if (clrTypeToUse == typeof(string) || clrTypeToUse.GetDnxCompatible().IsPrimitive || clrTypeToUse == typeof(object)) continue;
 
 
-                bool isClassOrArray = clrTypeToUse.IsClass || clrTypeToUse.IsInterface;
+                bool isClassOrArray = clrTypeToUse.GetDnxCompatible().IsClass || clrTypeToUse.GetDnxCompatible().IsInterface;
                 TsModuleMember member = null;
                 if (clrTypeToUse.IsArray)
                 {
                     ProcessTypes(new[] { clrTypeToUse.GetElementType() }, generator);
                 }
-                else if (clrTypeToUse.IsGenericType)
+                else if (clrTypeToUse.GetDnxCompatible().IsGenericType)
                 {
-                    ProcessTypes(clrTypeToUse.GetGenericArguments(), generator);
-                    bool isEnumerable = typeof(IEnumerable).IsAssignableFrom(clrTypeToUse);
+                    ProcessTypes(clrTypeToUse.GetDnxCompatible().GetGenericArguments(), generator);
+                    bool isEnumerable = typeof(IEnumerable).GetDnxCompatible().IsAssignableFrom(clrTypeToUse);
                     if (!isEnumerable)
                     {
                         member = generator.ModelBuilder.Add(clrTypeToUse, !isClassOrArray);
