@@ -1,0 +1,13 @@
+syntax: glob
+bin/*
+obj/*
+*.suo
+packages/*
+*.user
+*.bak
+*.orig
+TypeLite.Demo/Scripts/Enums.js*
+TypeLite.Demo/Scripts/TypeLiteTests.js*
+TestResults/*
+.vs/config/applicationhost.config
+TypeLite.Demo/Bin
