@@ -17,9 +17,9 @@ namespace TypeGap.Util
 
             dec.ControllerName = type.Name;
 
-            var routeAttr = GetAttributes(type, "Route").FirstOrDefault();
+            var routeAttr = GetAttributes(type.GetDnxCompatible(), "Route").FirstOrDefault();
             if (routeAttr != null)
-                dec.RouteTemplate = TryGetBestPrivateMember(routeAttr, "Template", "Name").ToString();
+                dec.RouteTemplate = TryGetBestPrivateMember(routeAttr, "Template").ToString();
 
             var methods = typeInfo.GetMethods()
                .Where(m => m.IsPublic)
@@ -34,8 +34,23 @@ namespace TypeGap.Util
                 if (GetAttributes(m, "NonAction").Length > 0)
                     continue;
 
+                ApiMethod? method = null;
+                var action = dec.AddAction(m.Name, m.ReturnType);
+
+                var methodAttr = GetAttributes(m, "HttpMethod").FirstOrDefault();
+                if (methodAttr != null)
+                {
+                    var possibleMethods = TryGetBestPrivateMember(methodAttr, "HttpMethods") as IEnumerable<string>;
+                    var possibleTemplate = TryGetBestPrivateMember(methodAttr, "Template") as string;
+
+                    if (possibleMethods != null && possibleMethods.Any())
+                        method = (ApiMethod)Enum.Parse(typeof(ApiMethod), possibleMethods.First(), true);
+
+                    if (possibleTemplate != null)
+                        action.RouteTemplate = possibleTemplate;
+                }
+
                 // [HttpPut, HttpGet, etc..]
-                var method = ApiMethod.Get;
                 if (GetAttributes(m, "HttpPost").Length > 0)
                     method = ApiMethod.Post;
                 else if (GetAttributes(m, "HttpDelete").Length > 0)
@@ -45,15 +60,17 @@ namespace TypeGap.Util
                 else if (GetAttributes(m, "HttpPatch").Length > 0)
                     method = ApiMethod.Patch;
 
-                var action = dec.AddAction(m.Name, m.ReturnType, method);
+                if (method != null)
+                    action.Method = method.Value;
+
 
                 // [RouteAttribute]
                 var actionRouteAttr = GetAttributes(m, "Route").FirstOrDefault();
                 if (actionRouteAttr != null)
-                    action.RouteTemplate = TryGetBestPrivateMember(actionRouteAttr, "Template", "Name").ToString();
+                    action.RouteTemplate = TryGetBestPrivateMember(actionRouteAttr, "Template").ToString();
 
                 // [ProducesResponseTypeAttribute]
-                var responses = GetAttributes(type, "ProducesResponseType").Select(p => new
+                var responses = GetAttributes(type.GetDnxCompatible(), "ProducesResponseType").Select(p => new
                 {
                     Type = (Type)TryGetBestPrivateMember(p, "Type"),
                     StatusCode = (int)TryGetBestPrivateMember(p, "StatusCode"),
@@ -83,20 +100,12 @@ namespace TypeGap.Util
             return dec;
         }
 
-
-        private static object[] GetAttributes(Type type, string attrName)
-        {
-            var typeInfo = type.GetDnxCompatible();
-            return typeInfo.GetCustomAttributes()
-                .Select(a => (object)a)
-                .Where(a => a.GetType().Name.EndsWith(attrName) || a.GetType().Name.EndsWith(attrName + "Attribute"))
-                .ToArray();
-        }
-
         private static object[] GetAttributes(ICustomAttributeProvider typeInfo, string attrName)
         {
             return typeInfo.GetCustomAttributes(false)
-                .Where(a => a.GetType().Name.EndsWith(attrName) || a.GetType().Name.EndsWith(attrName + "Attribute"))
+                .Select(attr => new { Attribute = attr, TypeNames = attr.GetType().GetParentConcreteTypes().Select(p => p.Name).Concat(new[] { attr.GetType().Name }) })
+                .Where(o => o.TypeNames.Any(t => t.EndsWith(attrName) || t.EndsWith((attrName + "Attribute"))))
+                .Select(o => o.Attribute)
                 .ToArray();
         }
 

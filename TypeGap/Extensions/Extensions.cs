@@ -49,6 +49,23 @@ namespace TypeGap.Extensions
             return value.Substring(0, 1).ToLower() + value.Substring(1);
         }
 
+        public static IEnumerable<Type> GetParentConcreteTypes(this Type type)
+        {
+            // is there any base type?
+            if ((type == null) || (type.GetDnxCompatible().BaseType == null))
+            {
+                yield break;
+            }
+
+            // return all inherited types
+            var currentBaseType = type.GetDnxCompatible().BaseType;
+            while (currentBaseType != null)
+            {
+                yield return currentBaseType;
+                currentBaseType = currentBaseType.GetDnxCompatible().BaseType;
+            }
+        }
+
 #if NETSTANDARD1_6
         public static TypeInfo GetDnxCompatible(this Type t)
         {

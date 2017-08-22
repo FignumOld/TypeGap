@@ -22,6 +22,7 @@ namespace TypeGap
         private string _namespace;
         private List<ApiControllerDesc> _apis = new List<ApiControllerDesc>();
         private string _promiseType = "Promise";
+        private Func<string, string> _urlRewriter = (u) => u;
 
         public TypeFluent Add(Type t)
         {
@@ -60,10 +61,11 @@ namespace TypeGap
             return api;
         }
 
-        public TypeFluent AddApiObject(Type type)
+        public ApiControllerDesc AddApiObject(Type type)
         {
-            _apis.Add(ObjectToDescriptionConverter.Convert(type));
-            return this;
+            var api = ObjectToDescriptionConverter.Convert(type);
+            _apis.Add(api);
+            return api;
         }
 
         public TypeFluidOutput Build()
@@ -82,7 +84,7 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            var apiGen = new ApiGenerator(converter, _promiseType);
+            var apiGen = new ApiGenerator(converter, _urlRewriter, _promiseType);
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
             //var signalr = new SignalRGenerator();
@@ -146,6 +148,12 @@ namespace TypeGap
         public TypeFluent WithPromiseType(string promise)
         {
             _promiseType = promise;
+            return this;
+        }
+
+        public TypeFluent WithUrlRewriter(Func<string, string> rewriter)
+        {
+            _urlRewriter = rewriter;
             return this;
         }
 

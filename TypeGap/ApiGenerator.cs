@@ -80,12 +80,14 @@ namespace TypeGap
     internal class ApiGenerator
     {
         private readonly TypeConverter _converter;
+        private readonly Func<string, string> _rewriter;
         private readonly string _promiseType;
 
-        public ApiGenerator(TypeConverter converter) : this(converter, "Promise") { }
-        public ApiGenerator(TypeConverter converter, string promiseType)
+        public ApiGenerator(TypeConverter converter, Func<string, string> rewriter) : this(converter, rewriter, "Promise") { }
+        public ApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType)
         {
             _converter = converter;
+            _rewriter = rewriter;
             _promiseType = promiseType;
         }
 
@@ -247,7 +249,7 @@ namespace TypeGap
                 url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + {p.ParameterName} + \"")));
             }
 
-            return "\"" + url.ToString().TrimStart('/') + "\"";
+            return "\"" + _rewriter(url.ToString().TrimStart('/')) + "\"";
         }
     }
 }
