@@ -162,8 +162,6 @@ namespace TypeGap
                                 {
                                     string obj = $"{{ Value: {GetEnumValue(value)}, Name: \"{value.Name}\"";
 
-                                    //sb.Append($"        {GetEnumValue(value).Trim('"')}: {{ Value: {GetEnumValue(value)}, Name: \"{value.Name}\"");
-
                                     var displayAttr =
                                         ObjectToDescriptionConverter.GetAttributes(value.Field, "Display").FirstOrDefault() ??
                                         ObjectToDescriptionConverter.GetAttributes(value.Field, "DisplayName").FirstOrDefault();
