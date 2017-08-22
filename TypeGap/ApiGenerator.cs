@@ -189,7 +189,7 @@ namespace TypeGap
                 .SingleOrDefault();
 
             if (httpMethod == "get" && post != null)
-                throw new InvalidOperationException("Invalid action, get method can't take complex type in message body");
+                throw new InvalidOperationException($"Invalid action, get method can't take complex type in message body. (at {routeTemplate})");
 
             postParam = post;
             return parameters.Except(new[] { post }).ToArray();
