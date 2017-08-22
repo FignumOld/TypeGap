@@ -14,15 +14,30 @@ using TypeLite.TsModels;
 
 namespace TypeGap
 {
+    public enum EnumOutputMode
+    {
+        Instance,
+        Const,
+        Type,
+        Custom,
+    }
+
+    public enum EnumValueMode
+    {
+        Number,
+        String,
+    }
+
     public class TypeFluent
     {
-        private List<Type> _hubs = new List<Type>();
+        //private List<Type> _hubs = new List<Type>();
         private List<Type> _general = new List<Type>();
-        private bool _constEnums = true;
         private string _namespace;
         private List<ApiControllerDesc> _apis = new List<ApiControllerDesc>();
         private string _promiseType = "Promise";
         private Func<string, string> _urlRewriter = (u) => u;
+        private EnumOutputMode _enumOutput = EnumOutputMode.Const;
+        private EnumValueMode _enumValue = EnumValueMode.Number;
 
         public TypeFluent Add(Type t)
         {
@@ -75,7 +90,6 @@ namespace TypeGap
 
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
-            fluent.AsConstEnums(_constEnums);
             fluent.WithIndentation("    ");
 
             var converter = new TypeConverter(_namespace, fluent);
@@ -94,14 +108,93 @@ namespace TypeGap
 
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
 
-            var tsEnumDefinitions = fluent.Generate(TsGeneratorOutput.Enums);
+            string tsEnumDefinitions = GenerateEnumDefinitions(fluent, converter);
 
-            if (!_constEnums)
+            return new TypeFluidOutput
             {
-                ScriptBuilder sb = new ScriptBuilder("    ");
+                DefinitionTS = tsClassDefinitions,
+                EnumsTS = tsEnumDefinitions,
+                ServicesTS = services.GetStringBuilder().ToString(),
+            };
+        }
+
+        private string GenerateEnumDefinitions(TypeScriptFluent fluent, TypeConverter converter)
+        {
+            var tsModel = fluent.ModelBuilder.Build();
+            var enums = tsModel.Enums
+                .Select(e => new { Original = e, Path = converter.GetTypeScriptName(e.Type).Split('.') })
+                .Select(e => new { Original = e.Original, Name = e.Path.Last(), Namespace = String.Join(".", e.Path.Take(e.Path.Length - 1)) })
+                .GroupBy(e => e.Namespace)
+                .ToArray();
+
+            var sb = new ScriptBuilder("    ");
+
+            Func<TsEnumValue, string> GetEnumValue = (e) => _enumValue == EnumValueMode.Number ? e.Value : "\"" + e.Name + "\"";
+
+            foreach (var grp in enums)
+            {
                 sb.AppendLine();
-                var enums = fluent.ModelBuilder.Build().Enums;
-                var namespaces = enums
+                sb.AppendLine($"namespace {grp.Key} {{");
+
+                foreach (var e in grp)
+                {
+                    switch (_enumOutput)
+                    {
+                        case EnumOutputMode.Instance:
+                        case EnumOutputMode.Const:
+                            {
+                                sb.AppendLine($"    export {(_enumOutput == EnumOutputMode.Const ? "const " : "")}enum {e.Name} = {{");
+                                foreach (var value in e.Original.Values)
+                                    sb.AppendLine($"        {value.Name} = {GetEnumValue(value)},");
+                                sb.AppendLine("    }");
+                            }
+                            break;
+                        case EnumOutputMode.Type:
+                            {
+                                sb.AppendLine($"    export type {e.Name} = {String.Join(" | ", e.Original.Values.Select(GetEnumValue))};");
+                            }
+                            break;
+                        case EnumOutputMode.Custom:
+                            {
+                                sb.AppendLine($"    export type {e.Name} = {String.Join(" | ", e.Original.Values.Select(GetEnumValue))};");
+                                sb.AppendLine($"    export const {e.Name}Detail = {{");
+                                foreach (var value in e.Original.Values)
+                                {
+                                    string obj = $"{{ Value: {GetEnumValue(value)}, Name: \"{value.Name}\"";
+
+                                    //sb.Append($"        {GetEnumValue(value).Trim('"')}: {{ Value: {GetEnumValue(value)}, Name: \"{value.Name}\"");
+
+                                    var displayAttr =
+                                        ObjectToDescriptionConverter.GetAttributes(value.Field, "Display").FirstOrDefault() ??
+                                        ObjectToDescriptionConverter.GetAttributes(value.Field, "DisplayName").FirstOrDefault();
+
+                                    if (displayAttr != null)
+                                    {
+                                        var displayText = ObjectToDescriptionConverter.TryGetBestPrivateMember(displayAttr, "Name", "DisplayName");
+                                        if (displayText != null)
+                                            obj += $", DisplayName: \"{displayText}\"";
+                                    }
+                                    obj += " },";
+
+                                    sb.AppendLine($"        {GetEnumValue(value).Trim('"')}: {obj}");
+                                    if (value.Name != GetEnumValue(value).Trim('"'))
+                                        sb.AppendLine($"        {value.Name}: {obj}");
+                                }
+                                sb.AppendLine("    }");
+                            }
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+                }
+
+                sb.AppendLine("}");
+            }
+
+            if (_enumOutput == EnumOutputMode.Instance || _enumOutput == EnumOutputMode.Custom)
+            {
+                sb.AppendLine();
+                var namespaces = tsModel.Enums
                     .Select(e => converter.GetTypeScriptName(e.Type).Split('.'))
                     .Select(arr => arr.Take(arr.Length - 1))
                     .SelectMany(parts => parts.Select((p, i) => String.Join(".", parts.Take(i + 1))))
@@ -115,27 +208,28 @@ namespace TypeGap
                     sb.AppendLine($"wnd.{space} = wnd.{space} || {{}};");
                 }
 
-                sb.AppendLine();
-                foreach (var e in enums)
+                foreach (var e in tsModel.Enums)
                 {
                     var fullName = converter.GetTypeScriptName(e.Type);
-                    sb.AppendLine($"wnd.{fullName} = {fullName};");
-                }
 
-                tsEnumDefinitions += sb.ToString();
+                    if (_enumOutput == EnumOutputMode.Instance)
+                    {
+                        sb.AppendLine($"wnd.{fullName} = {fullName};");
+                    }
+                    else
+                    {
+                        sb.AppendLine($"wnd.{fullName}Detail = {fullName}Detail;");
+                    }
+                }
             }
 
-            return new TypeFluidOutput
-            {
-                DefinitionTS = tsClassDefinitions,
-                EnumsTS = tsEnumDefinitions,
-                ServicesTS = services.GetStringBuilder().ToString(),
-            };
+            return sb.ToString();
         }
 
-        public TypeFluent WithConstEnums(bool value = true)
+        public TypeFluent WithEnumSettings(EnumOutputMode output, EnumValueMode value)
         {
-            _constEnums = value;
+            _enumOutput = output;
+            _enumValue = value;
             return this;
         }
 

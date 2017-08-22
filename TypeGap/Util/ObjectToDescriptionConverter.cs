@@ -100,7 +100,7 @@ namespace TypeGap.Util
             return dec;
         }
 
-        private static object[] GetAttributes(ICustomAttributeProvider typeInfo, string attrName)
+        public static object[] GetAttributes(ICustomAttributeProvider typeInfo, string attrName)
         {
             return typeInfo.GetCustomAttributes(false)
                 .Select(attr => new { Attribute = attr, TypeNames = attr.GetType().GetParentConcreteTypes().Select(p => p.Name).Concat(new[] { attr.GetType().Name }) })
@@ -109,7 +109,7 @@ namespace TypeGap.Util
                 .ToArray();
         }
 
-        private static object TryGetBestPrivateMember(object obj, params string[] names)
+        public static object TryGetBestPrivateMember(object obj, params string[] names)
         {
             var type = obj.GetType();
             var typeInfo = type.GetDnxCompatible();
