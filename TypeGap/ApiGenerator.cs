@@ -184,11 +184,17 @@ namespace TypeGap
         private ApiParamDesc[] ValidateParameters(List<ApiParamDesc> parameters, string httpMethod, string routeTemplate, out ApiParamDesc postParam)
         {
             // ReSharper disable once ReplaceWithSingleCallToSingleOrDefault
-            var post = parameters
+
+            var postPossibilities = parameters
                 .Where(p => !IsRouteParameter(p.ParameterName, routeTemplate))
                 .Where(p => p.Mode != ApiParameterMode.FromUri)
                 .Where(p => p.Mode == ApiParameterMode.FromBody || _converter.IsComplexType(p.ParameterType))
-                .SingleOrDefault();
+                .ToArray();
+
+            if (postPossibilities.Length > 1)
+                throw new InvalidOperationException($"Invalid action, can't have more than one candidate for post parameters. Try using [FromBody] or [FromUri] to provide additional context. (at {routeTemplate}");
+
+            var post = postPossibilities.FirstOrDefault();
 
             if (httpMethod == "get" && post != null)
                 throw new InvalidOperationException($"Invalid action, get method can't take complex type in message body. (at {routeTemplate})");
