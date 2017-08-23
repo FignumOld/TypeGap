@@ -82,20 +82,21 @@ namespace TypeGap
         private readonly TypeConverter _converter;
         private readonly Func<string, string> _rewriter;
         private readonly string _promiseType;
+        private readonly string _ajaxPath;
 
-        public ApiGenerator(TypeConverter converter, Func<string, string> rewriter) : this(converter, rewriter, "Promise") { }
-        public ApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType)
+        public ApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType, string ajaxPath)
         {
             _converter = converter;
             _rewriter = rewriter;
             _promiseType = promiseType;
+            _ajaxPath = ajaxPath;
         }
 
         public void WriteServices(ApiControllerDesc[] controllers, IndentedTextWriter writer)
         {
             var controllerNames = controllers.Select(d => d.ControllerName).ToArray();
 
-            writer.WriteLine("import { Ajax, IExtendedAjaxSettings } from \"./Ajax\";");
+            writer.WriteLine($"import {{ Ajax, IExtendedAjaxSettings }} from \"{_ajaxPath}\";");
 
             writer.WriteLine();
 

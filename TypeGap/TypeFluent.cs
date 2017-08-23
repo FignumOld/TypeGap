@@ -38,6 +38,7 @@ namespace TypeGap
         private Func<string, string> _urlRewriter = (u) => u;
         private EnumOutputMode _enumOutput = EnumOutputMode.Const;
         private EnumValueMode _enumValue = EnumValueMode.Number;
+        private string _ajaxName = "./Ajax";
 
         public TypeFluent Add(Type t)
         {
@@ -98,7 +99,7 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            var apiGen = new ApiGenerator(converter, _urlRewriter, _promiseType);
+            var apiGen = new ApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName);
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
             //var signalr = new SignalRGenerator();
@@ -178,7 +179,7 @@ namespace TypeGap
                                     if (value.Name != GetEnumValue(value).Trim('"'))
                                         sb.AppendLine($"        {value.Name}: {obj}");
                                 }
-                                sb.AppendLine("    }");
+                                sb.AppendLine("    };");
                             }
                             break;
                         default:
@@ -246,6 +247,12 @@ namespace TypeGap
         public TypeFluent WithUrlRewriter(Func<string, string> rewriter)
         {
             _urlRewriter = rewriter;
+            return this;
+        }
+
+        public TypeFluent WithAjaxServicePath(string path)
+        {
+            _ajaxName = path;
             return this;
         }
 
