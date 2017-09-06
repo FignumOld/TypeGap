@@ -81,7 +81,7 @@ namespace TypeGap
             return ValueMode == EnumValueMode.Number ? e.Value : "\"" + e.Name + "\"";
         }
 
-        protected abstract void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup enumObj, out string globalTypeName);
+        public abstract void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup enumObj, out string globalTypeName);
 
         //    private string GenerateEnumDefinitions(TypeScriptFluent fluent, TypeConverter converter)
         //    {
@@ -169,7 +169,7 @@ namespace TypeGap
             ConstEnums = constEnums;
         }
 
-        protected override void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup e, out string globalTypeName)
+        public override void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup e, out string globalTypeName)
         {
             enumWriter.WriteLine($"export {(ConstEnums ? "const " : "")}enum {e.Name} {{");
             foreach (var value in e.Enum.Values)
@@ -191,7 +191,7 @@ namespace TypeGap
 
         }
 
-        protected override void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup e, out string globalTypeName)
+        public override void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup e, out string globalTypeName)
         {
             enumWriter.WriteLine($"export type {e.Name} = {String.Join(" | ", e.Enum.Values.Select(GetEnumValue))};");
             globalTypeName = null;
