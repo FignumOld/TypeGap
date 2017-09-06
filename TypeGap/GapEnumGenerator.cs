@@ -72,7 +72,7 @@ namespace TypeGap
                     enumsWriter.WriteLine($"wnd.{space} = wnd.{space} || {{}};");
 
                 foreach (var n_gr in globals)
-                    enumsWriter.WriteLine($"wnd.{n_gr.Value.Namespace}.{n_gr.Key} = {n_gr.Key};");
+                    enumsWriter.WriteLine($"wnd.{n_gr.Value.Namespace}.{n_gr.Key} = {n_gr.Value.Namespace}.{n_gr.Key};");
             }
         }
 
