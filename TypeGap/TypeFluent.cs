@@ -39,6 +39,7 @@ namespace TypeGap
         private EnumOutputMode _enumOutput = EnumOutputMode.Const;
         private EnumValueMode _enumValue = EnumValueMode.Number;
         private string _ajaxName = "./Ajax";
+        private bool _generateNotice = true;
 
         public TypeFluent Add(Type t)
         {
@@ -111,11 +112,13 @@ namespace TypeGap
 
             string tsEnumDefinitions = GenerateEnumDefinitions(fluent, converter);
 
+            string prepended = _generateNotice ? Resx.GeneratedNotice + "\r\n\r\n" : "";
+
             return new TypeFluidOutput
             {
-                DefinitionTS = tsClassDefinitions,
-                EnumsTS = tsEnumDefinitions,
-                ServicesTS = services.GetStringBuilder().ToString(),
+                DefinitionTS = prepended + tsClassDefinitions,
+                EnumsTS = prepended + tsEnumDefinitions,
+                ServicesTS = prepended + services.GetStringBuilder(),
             };
         }
 
@@ -250,6 +253,12 @@ namespace TypeGap
             return this;
         }
 
+        public TypeFluent WithGeneratedNotice(bool generateNotice = true)
+        {
+            _generateNotice = generateNotice;
+            return this;
+        }
+
         public TypeFluent WithAjaxServicePath(string path)
         {
             _ajaxName = path;
@@ -348,7 +357,7 @@ namespace TypeGap
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
 
-            File.WriteAllText(path, Resx.GeneratedNotice + Environment.NewLine + Environment.NewLine + content);
+            File.WriteAllText(path, content);
         }
     }
 

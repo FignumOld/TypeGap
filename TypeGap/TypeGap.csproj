@@ -11,6 +11,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Resources\GeneratedNotice.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\GeneratedNotice.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\LukasKabrt-typelite-076249af9d12\TypeLite\TypeLiteForTypeGap.csproj" />
   </ItemGroup>
 
