@@ -9,7 +9,7 @@ namespace TypeGap.Util
 
     // from https://referencesource.microsoft.com/#System/compmod/system/codedom/compiler/IndentTextWriter.cs,bae755007e6f4473
     // needed to copy here because not available in dnc
-    internal class IndentedTextWriter : TextWriter
+    public class CustomIndentedTextWriter : TextWriter
     {
         private TextWriter writer;
         private int indentLevel;
@@ -18,10 +18,10 @@ namespace TypeGap.Util
 
         public const string DefaultTabString = "    ";
 
-        public IndentedTextWriter(TextWriter writer) : this(writer, DefaultTabString)
+        public CustomIndentedTextWriter(TextWriter writer) : this(writer, DefaultTabString)
         {
         }
-        public IndentedTextWriter(TextWriter writer, string tabString) : base(CultureInfo.InvariantCulture)
+        public CustomIndentedTextWriter(TextWriter writer, string tabString) : base(CultureInfo.InvariantCulture)
         {
             this.writer = writer;
             this.tabString = tabString;
@@ -259,11 +259,11 @@ namespace TypeGap.Util
 
         internal class Indentation
         {
-            private IndentedTextWriter writer;
+            private CustomIndentedTextWriter writer;
             private int indent;
             private string s;
 
-            internal Indentation(IndentedTextWriter writer, int indent)
+            internal Indentation(CustomIndentedTextWriter writer, int indent)
             {
                 this.writer = writer;
                 this.indent = indent;

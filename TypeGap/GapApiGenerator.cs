@@ -77,14 +77,14 @@ namespace TypeGap
         public ApiParameterMode Mode { get; set; }
     }
 
-    internal class ApiGenerator
+    public class GapApiGenerator
     {
         private readonly TypeConverter _converter;
         private readonly Func<string, string> _rewriter;
         private readonly string _promiseType;
         private readonly string _ajaxPath;
 
-        public ApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType, string ajaxPath)
+        public GapApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType, string ajaxPath)
         {
             _converter = converter;
             _rewriter = rewriter;
@@ -92,7 +92,7 @@ namespace TypeGap
             _ajaxPath = ajaxPath;
         }
 
-        public void WriteServices(ApiControllerDesc[] controllers, IndentedTextWriter writer)
+        public virtual void WriteServices(ApiControllerDesc[] controllers, CustomIndentedTextWriter writer)
         {
             var controllerNames = controllers.Select(d => d.ControllerName).ToArray();
 
@@ -110,7 +110,7 @@ namespace TypeGap
             }
         }
 
-        private void WriteStaticHelper(string[] names, IndentedTextWriter writer)
+        protected virtual void WriteStaticHelper(string[] names, CustomIndentedTextWriter writer)
         {
             writer.WriteLine($"export class Services {{");
             writer.Indent++;
@@ -132,7 +132,7 @@ namespace TypeGap
             writer.WriteLine("}");
         }
 
-        private void WriteController(ApiControllerDesc controller, IndentedTextWriter writer)
+        protected virtual void WriteController(ApiControllerDesc controller, CustomIndentedTextWriter writer)
         {
             string urlPrefix = controller.RouteTemplate;
             urlPrefix = urlPrefix.Replace("[controller]", controller.ControllerName);
@@ -158,7 +158,7 @@ namespace TypeGap
             writer.WriteLine("}");
         }
 
-        private void WriteMethod(ApiActionDesc action, IndentedTextWriter writer, string urlPrefix)
+        protected virtual void WriteMethod(ApiActionDesc action, CustomIndentedTextWriter writer, string urlPrefix)
         {
             var template = JoinUrls(urlPrefix, action.RouteTemplate);
             template = template.Replace("[action]", action.ActionName);
@@ -182,7 +182,7 @@ namespace TypeGap
             writer.WriteLine("}");
         }
 
-        private ApiParamDesc[] ValidateParameters(List<ApiParamDesc> parameters, string httpMethod, string routeTemplate, out ApiParamDesc postParam)
+        protected virtual ApiParamDesc[] ValidateParameters(List<ApiParamDesc> parameters, string httpMethod, string routeTemplate, out ApiParamDesc postParam)
         {
             // ReSharper disable once ReplaceWithSingleCallToSingleOrDefault
 
@@ -204,7 +204,7 @@ namespace TypeGap
             return parameters.Except(new[] { post }).ToArray();
         }
 
-        private string JoinUrls(params string[] url)
+        protected virtual string JoinUrls(params string[] url)
         {
             StringBuilder output = new StringBuilder(100);
             foreach (var u in url)
@@ -213,18 +213,18 @@ namespace TypeGap
             return output.ToString().Trim('/');
         }
 
-        private string BuildMethodParameters(ApiActionDesc method)
+        protected virtual string BuildMethodParameters(ApiActionDesc method)
         {
             var param = method.Parameters;
             return String.Join(", ", param.Select(p => $"{p.ParameterName}{(p.IsOptional ? "?" : "")}: {_converter.GetTypeScriptName(p.ParameterType)}"));
         }
 
-        private bool IsRouteParameter(string name, string template)
+        protected virtual bool IsRouteParameter(string name, string template)
         {
             return template.IndexOf("{" + name, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
-        private string BuildUrlString(string template, ApiParamDesc[] getParameters)
+        protected virtual string BuildUrlString(string template, ApiParamDesc[] getParameters)
         {
             List<string> routeParameters = new List<string>();
             StringBuilder url = new StringBuilder();
