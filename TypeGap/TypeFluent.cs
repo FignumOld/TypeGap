@@ -32,6 +32,7 @@ namespace TypeGap
         private bool _generateNotice = true;
         private GapEnumGenerator _enumGenerator = new RegularEnumGenerator(false, EnumValueMode.Number);
         private string _indent = "    ";
+        private ITsModelVisitor _modelVisitor;
 
         public TypeFluent Add(Type t)
         {
@@ -91,6 +92,7 @@ namespace TypeGap
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
             fluent.WithIndentation(_indent);
+            fluent.WithModelVisitor(_modelVisitor);
 
             var converter = new TypeConverter(_namespace, fluent);
             fluent.WithDictionaryMemberFormatter(converter);
@@ -160,6 +162,12 @@ namespace TypeGap
         public TypeFluent WithEnumGenerator(GapEnumGenerator generator)
         {
             _enumGenerator = generator;
+            return this;
+        }
+
+        public TypeFluent WithModelVisitor(ITsModelVisitor visitor)
+        {
+            _modelVisitor = visitor;
             return this;
         }
 

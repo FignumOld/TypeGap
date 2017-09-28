@@ -12,6 +12,8 @@ namespace TypeLite {
     /// Creates a script model from CLR classes.
     /// </summary>
     public class TsModelBuilder {
+        private ITsModelVisitor _modelVisitor;
+
         /// <summary>
         /// Gets or sets collection of classes in the model being built.
         /// </summary>
@@ -146,6 +148,7 @@ namespace TypeLite {
         /// <returns>The script model with the classes.</returns>
         public TsModel Build() {
             var model = new TsModel(this.Classes.Values, this.Enums.Values);
+            if (_modelVisitor != null) model.RunVisitor(_modelVisitor);
             model.RunVisitor(new TypeResolver(model));
             return model;
         }
@@ -211,6 +214,15 @@ namespace TypeLite {
                     this.Add(genericArgument.Type);
                 }
             }
+        }
+
+        /// <summary>
+        /// Registers a model visitor which will trigger for each entity added to the model
+        /// </summary>
+        /// <param name="modelVisitor"></param>
+        public void RegisterModelVisitor(ITsModelVisitor modelVisitor)
+        {
+            _modelVisitor = modelVisitor;
         }
     }
 
