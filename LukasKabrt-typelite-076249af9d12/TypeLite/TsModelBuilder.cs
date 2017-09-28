@@ -155,7 +155,7 @@ namespace TypeLite {
         /// </summary>
         /// <param name="classModel"></param>
         private void AddReferences(TsClass classModel, Dictionary<Type, TypeConvertor> typeConvertors) {
-            foreach (var property in classModel.Properties.Where(model => !model.IsIgnored)) {
+            foreach (var property in classModel.Properties.Concat(classModel.Fields).Concat(classModel.Constants).Where(model => !model.IsIgnored)) {
                 var propertyTypeFamily = TsType.GetTypeFamily(property.PropertyType.Type);
                 if (propertyTypeFamily == TsTypeFamily.Collection) {
                     var collectionItemType = TsType.GetEnumerableType(property.PropertyType.Type);
