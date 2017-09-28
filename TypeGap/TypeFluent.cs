@@ -100,13 +100,14 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName);
-            apiGen.WriteServices(_apis.ToArray(), servicesWriter);
-
             //var signalr = new SignalRGenerator();
             //signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
 
             ProcessTypes(_general, fluent);
+            fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
+
+            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName);
+            apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
             definitionsWriter.Write(tsClassDefinitions);
@@ -193,6 +194,9 @@ namespace TypeGap
         {
             foreach (var clrType in types.Where(t => t != typeof(void)))
             {
+                if (generator.ModelBuilder.ContainsType(clrType))
+                    continue;
+
                 var clrTypeToUse = clrType;
                 if (typeof(Task).GetDnxCompatible().IsAssignableFrom(clrTypeToUse))
                 {

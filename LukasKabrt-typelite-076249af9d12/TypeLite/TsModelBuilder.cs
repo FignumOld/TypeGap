@@ -148,8 +148,8 @@ namespace TypeLite {
         /// <returns>The script model with the classes.</returns>
         public TsModel Build() {
             var model = new TsModel(this.Classes.Values, this.Enums.Values);
-            if (_modelVisitor != null) model.RunVisitor(_modelVisitor);
             model.RunVisitor(new TypeResolver(model));
+            if (_modelVisitor != null) model.RunVisitor(_modelVisitor);
             return model;
         }
 
@@ -223,6 +223,24 @@ namespace TypeLite {
         public void RegisterModelVisitor(ITsModelVisitor modelVisitor)
         {
             _modelVisitor = modelVisitor;
+        }
+
+        public bool ContainsType(Type clrType)
+        {
+            return GetType(clrType) != null;
+        }
+
+        public TsType GetType(Type clrType)
+        {
+            TsClass tsClass = null;
+            if (Classes.TryGetValue(clrType, out tsClass))
+                return tsClass;
+
+            TsEnum tsEnum = null;
+            if (Enums.TryGetValue(clrType, out tsEnum))
+                return tsEnum;
+
+            return null;
         }
     }
 
