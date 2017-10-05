@@ -12,6 +12,8 @@ namespace TypeLite {
     /// Creates a script model from CLR classes.
     /// </summary>
     public class TsModelBuilder {
+        private ITsModelVisitor _modelVisitor;
+
         /// <summary>
         /// Gets or sets collection of classes in the model being built.
         /// </summary>
@@ -147,6 +149,7 @@ namespace TypeLite {
         public TsModel Build() {
             var model = new TsModel(this.Classes.Values, this.Enums.Values);
             model.RunVisitor(new TypeResolver(model));
+            if (_modelVisitor != null) model.RunVisitor(_modelVisitor);
             return model;
         }
 
@@ -155,7 +158,7 @@ namespace TypeLite {
         /// </summary>
         /// <param name="classModel"></param>
         private void AddReferences(TsClass classModel, Dictionary<Type, TypeConvertor> typeConvertors) {
-            foreach (var property in classModel.Properties.Where(model => !model.IsIgnored)) {
+            foreach (var property in classModel.Properties.Concat(classModel.Fields).Concat(classModel.Constants).Where(model => !model.IsIgnored)) {
                 var propertyTypeFamily = TsType.GetTypeFamily(property.PropertyType.Type);
                 if (propertyTypeFamily == TsTypeFamily.Collection) {
                     var collectionItemType = TsType.GetEnumerableType(property.PropertyType.Type);
@@ -211,6 +214,33 @@ namespace TypeLite {
                     this.Add(genericArgument.Type);
                 }
             }
+        }
+
+        /// <summary>
+        /// Registers a model visitor which will trigger for each entity added to the model
+        /// </summary>
+        /// <param name="modelVisitor"></param>
+        public void RegisterModelVisitor(ITsModelVisitor modelVisitor)
+        {
+            _modelVisitor = modelVisitor;
+        }
+
+        public bool ContainsType(Type clrType)
+        {
+            return GetType(clrType) != null;
+        }
+
+        public TsType GetType(Type clrType)
+        {
+            TsClass tsClass = null;
+            if (Classes.TryGetValue(clrType, out tsClass))
+                return tsClass;
+
+            TsEnum tsEnum = null;
+            if (Enums.TryGetValue(clrType, out tsEnum))
+                return tsEnum;
+
+            return null;
         }
     }
 

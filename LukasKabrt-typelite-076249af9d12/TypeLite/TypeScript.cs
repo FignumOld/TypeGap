@@ -256,12 +256,22 @@ namespace TypeLite {
 			return this;
 		}
 
-		/// <summary>
-		/// Registers a typescript reference file
-		/// </summary>
-		/// <param name="reference">Name of the d.ts typescript reference file</param>
-		/// <returns></returns>
-		public TypeScriptFluent WithReference(string reference) {
+        /// <summary>
+        /// Registers a model visitor which will trigger for each entity added to the model
+        /// </summary>
+        /// <param name="modelVisitor"></param>
+	    public TypeScriptFluent WithModelVisitor(ITsModelVisitor modelVisitor)
+	    {
+	        _modelBuilder.RegisterModelVisitor(modelVisitor);
+	        return this;
+        }
+
+        /// <summary>
+        /// Registers a typescript reference file
+        /// </summary>
+        /// <param name="reference">Name of the d.ts typescript reference file</param>
+        /// <returns></returns>
+        public TypeScriptFluent WithReference(string reference) {
 			_scriptGenerator.AddReference(reference);
 			return this;
 		}
@@ -312,6 +322,7 @@ namespace TypeLite {
 		public override string ToString() {
 			return this.Generate();
 		}
+
 	}
 
 	/// <summary>

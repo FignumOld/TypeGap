@@ -32,6 +32,7 @@ namespace TypeGap
         private bool _generateNotice = true;
         private GapEnumGenerator _enumGenerator = new RegularEnumGenerator(false, EnumValueMode.Number);
         private string _indent = "    ";
+        private ITsModelVisitor _modelVisitor;
 
         public TypeFluent Add(Type t)
         {
@@ -91,6 +92,7 @@ namespace TypeGap
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
             fluent.WithIndentation(_indent);
+            fluent.WithModelVisitor(_modelVisitor);
 
             var converter = new TypeConverter(_namespace, fluent);
             fluent.WithDictionaryMemberFormatter(converter);
@@ -98,13 +100,14 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName);
-            apiGen.WriteServices(_apis.ToArray(), servicesWriter);
-
             //var signalr = new SignalRGenerator();
             //signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
 
             ProcessTypes(_general, fluent);
+            fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
+
+            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName);
+            apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
             definitionsWriter.Write(tsClassDefinitions);
@@ -163,6 +166,12 @@ namespace TypeGap
             return this;
         }
 
+        public TypeFluent WithModelVisitor(ITsModelVisitor visitor)
+        {
+            _modelVisitor = visitor;
+            return this;
+        }
+
         public void Build(string definitionPath, string servicesPath, string enumsPath)
         {
             var output = Build();
@@ -185,6 +194,9 @@ namespace TypeGap
         {
             foreach (var clrType in types.Where(t => t != typeof(void)))
             {
+                if (generator.ModelBuilder.ContainsType(clrType))
+                    continue;
+
                 var clrTypeToUse = clrType;
                 if (typeof(Task).GetDnxCompatible().IsAssignableFrom(clrTypeToUse))
                 {

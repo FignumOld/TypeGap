@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using TypeLite;
+using TypeLite.TsModels;
 
 namespace TypeGap
 {
@@ -57,7 +58,14 @@ namespace TypeGap
         {
             if (clrType == null)
                 System.Diagnostics.Debugger.Break();
-            return String.IsNullOrEmpty(_globalNamespace) ? clrType.FullName : _globalNamespace + "." + clrType.Name;
+
+            string moduleName = null;
+
+            var tsMember = _fluent.ModelBuilder.GetType(clrType) as TsModuleMember;
+            if (tsMember != null)
+                moduleName = tsMember.Module.Name + "." + tsMember.Name;
+
+            return String.IsNullOrEmpty(_globalNamespace) ? (moduleName ?? clrType.FullName) : _globalNamespace + "." + clrType.Name;
         }
 
         public string GetTypeScriptName(Type clrType)
