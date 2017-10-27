@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TypeGap.Util;
 
@@ -63,7 +64,7 @@ namespace TypeGap
     public class ApiActionDesc
     {
         public string ActionName { get; set; }
-        public string RouteTemplate { get; set; } = "[action]";
+        public string RouteTemplate { get; set; }
         public ApiMethod Method { get; set; }
         public List<ApiParamDesc> Parameters { get; set; } = new List<ApiParamDesc>();
         public Type ReturnType { get; set; }
@@ -134,8 +135,8 @@ namespace TypeGap
 
         protected virtual void WriteController(ApiControllerDesc controller, CustomIndentedTextWriter writer)
         {
-            string urlPrefix = controller.RouteTemplate;
-            urlPrefix = urlPrefix.Replace("[controller]", controller.ControllerName);
+            string template = controller.RouteTemplate;
+            template = Regex.Replace(template, @"(?:\[controller\]|\{controller\})", controller.ControllerName, RegexOptions.IgnoreCase);
 
             writer.WriteLine($"export class {controller.ControllerName}Service {{");
             writer.Indent++;
@@ -151,17 +152,23 @@ namespace TypeGap
             foreach (var action in controller.Actions)
             {
                 writer.WriteLine();
-                WriteMethod(action, writer, urlPrefix);
+                WriteMethod(action, writer, template);
             }
 
             writer.Indent--;
             writer.WriteLine("}");
         }
 
-        protected virtual void WriteMethod(ApiActionDesc action, CustomIndentedTextWriter writer, string urlPrefix)
+        protected virtual void WriteMethod(ApiActionDesc action, CustomIndentedTextWriter writer, string template)
         {
-            var template = JoinUrls(urlPrefix, action.RouteTemplate);
-            template = template.Replace("[action]", action.ActionName);
+            var regex = @"(?:\[action\]|\{action\})";
+            var exists = Regex.IsMatch(template, regex, RegexOptions.IgnoreCase);
+
+            if (!exists && action.RouteTemplate == null)
+                action.RouteTemplate = "[action]";
+
+            template = JoinUrls(template, action.RouteTemplate);
+            template = Regex.Replace(template, regex, action.ActionName, RegexOptions.IgnoreCase);
 
             var returnString = _converter.GetTypeScriptName(action.ReturnType);
 
@@ -176,7 +183,7 @@ namespace TypeGap
 
             writer.WriteLine($"public {action.ActionName}({paramString}ajaxOptions?: IExtendedAjaxSettings): {_promiseType}<{returnString}> {{");
             writer.Indent++;
-            writer.WriteLine("var url = this._hostname + " + BuildUrlString(template, getParameters) + ";");
+            writer.WriteLine("var url = this._hostname + " + BuildUrlString(action, template, getParameters) + ";");
             writer.WriteLine($"return this._ajax.{httpMethod}(url, {postParameter?.ParameterName ?? "null"}, ajaxOptions);");
             writer.Indent--;
             writer.WriteLine("}");
@@ -207,7 +214,7 @@ namespace TypeGap
         protected virtual string JoinUrls(params string[] url)
         {
             StringBuilder output = new StringBuilder(100);
-            foreach (var u in url)
+            foreach (var u in url.Where(x => !String.IsNullOrWhiteSpace(x)))
                 output.Append("/" + u.Trim('/'));
 
             return output.ToString().Trim('/');
@@ -221,10 +228,10 @@ namespace TypeGap
 
         protected virtual bool IsRouteParameter(string name, string template)
         {
-            return template.IndexOf("{" + name, StringComparison.OrdinalIgnoreCase) >= 0;
+            return Regex.IsMatch(template, @"\{\*?" + name, RegexOptions.IgnoreCase);
         }
 
-        protected virtual string BuildUrlString(string template, ApiParamDesc[] getParameters)
+        protected virtual string BuildUrlString(ApiActionDesc action, string template, ApiParamDesc[] getParameters)
         {
             List<string> routeParameters = new List<string>();
             StringBuilder url = new StringBuilder();
@@ -245,8 +252,31 @@ namespace TypeGap
                 if (typeIndex > 0)
                     part = part.Substring(0, typeIndex);
 
+                if (part.StartsWith("*"))
+                    part = part.Substring(1);
+
                 routeParameters.Add(part);
                 url.Append($"/\" + {part} + \"");
+            }
+
+            foreach (var r in routeParameters)
+            {
+                var get = getParameters.FirstOrDefault(g => g.ParameterName.Equals(r));
+                if (get == null)
+                {
+                    throw new Exception($"In action '{action.ActionName}', route parameter `{r}` does not match any available method parameters. " +
+                                        $"Please check your route template: '{template}'." +
+                                        $"Parameters: [{String.Join(", ", action.Parameters.Select(s => s.ParameterName))}]");
+                }
+                var typeCode = Type.GetTypeCode(get.ParameterType);
+                switch (typeCode)
+                {
+                    case TypeCode.DateTime:
+                    case TypeCode.Object:
+                        throw new Exception($"In action '{action.ActionName}' parameter type '{get.ParameterType.Name}' is not suitable " +
+                                            $"as a route parameter for template '{template}'. (Type code: {typeCode})");
+
+                }
             }
 
             var finalGetParameters = getParameters.Where(p => routeParameters.All(r => !r.Equals(p.ParameterName, StringComparison.OrdinalIgnoreCase)));
