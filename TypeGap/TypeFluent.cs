@@ -22,7 +22,7 @@ namespace TypeGap
 
     public class TypeFluent
     {
-        //private List<Type> _hubs = new List<Type>();
+        private List<Type> _hubs = new List<Type>();
         private List<Type> _general = new List<Type>();
         private string _namespace;
         private List<ApiControllerDesc> _apis = new List<ApiControllerDesc>();
@@ -45,19 +45,19 @@ namespace TypeGap
             return Add(typeof(T));
         }
 
-        //public TypeFluent AddSignalRHub<T>()
-        //{
-        //    return AddSignalRHub(typeof(T));
-        //}
+        public TypeFluent AddSignalRHub<T>()
+        {
+            return AddSignalRHub(typeof(T));
+        }
 
-        //public TypeFluent AddSignalRHub(Type t)
-        //{
-        //    if (t.BaseType == null || t.BaseType.FullName == null || !t.BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
-        //        throw new ArgumentException("Type must directly derive from the Hub type.");
+        public TypeFluent AddSignalRHub(Type t)
+        {
+            if (t.GetDnxCompatible().BaseType == null || t.GetDnxCompatible().BaseType.FullName == null || !t.GetDnxCompatible().BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
+                throw new ArgumentException("Type must directly derive from the Hub type.");
 
-        //    _hubs.Add(t);
-        //    return this;
-        //}
+            _hubs.Add(t);
+            return this;
+        }
 
         public ApiControllerDesc AddApiDescription(string name, string route = null)
         {
@@ -100,8 +100,8 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            //var signalr = new SignalRGenerator();
-            //signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
+            var signalr = new SignalRGenerator();
+            signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
 
             ProcessTypes(_general, fluent);
             fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
