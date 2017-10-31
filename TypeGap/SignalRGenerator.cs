@@ -18,6 +18,18 @@ namespace TypeGap
         public Type HubType { get; private set; }
 
         public string HubClassName { get; set; }
+
+        public string HubSignalRName
+        {
+            get
+            {
+                var attribute = HubType.GetDnxCompatible().GetCustomAttributes().Where(ca => ca.GetType().FullName == "Microsoft.AspNet.SignalR.Hubs.HubNameAttribute").FirstOrDefault();
+                if (attribute == null)
+                    return null;
+                var propInfo = attribute.GetType().GetDnxCompatible().GetProperty("HubName");
+                return propInfo.GetValue(attribute) as string;
+            }
+        }
     }
 
     public class SignalRGenerator
@@ -94,17 +106,47 @@ namespace TypeGap
                 }
                 else
                 {
-                    GenerateMethods(scriptBuilder, hub, converter, true);
+                    GenerateMethods(scriptBuilder, hub, converter, true, (mi, tc) => GenerateMethodDeclaration(mi, tc, hub, true));
                 }
             }
             scriptBuilder.AppendLineIndented("}");
+            scriptBuilder.AppendLine();
+
+            // Build the function for creating a hub proxy
+            if (string.IsNullOrEmpty(hub.HubSignalRName))
+            {
+                scriptBuilder.AppendLineIndented($"/* function {hub.HubClassName}Client_CreateHubProxy not generated as hub type {hub.HubType.FullName} does not have a HubNameAttribute or the hub name is an empty string. */");
+            }
+            else
+            {
+                scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_CreateHubProxy(connection: SignalR.Hub.Connection): SignalR.Hub.Proxy {{");
+                using (scriptBuilder.IncreaseIndentation())
+                    scriptBuilder.AppendLineIndented($"return connection.createHubProxy('{hub.HubSignalRName}');");
+                scriptBuilder.AppendLineIndented("}");
+            }
+            scriptBuilder.AppendLine();
+
+            // Build the function for wiring up a proxy to a client interface
+            if (!hub.HubType.GetDnxCompatible().BaseType.GetDnxCompatible().IsGenericType)
+            {
+                scriptBuilder.AppendLineIndented($"/* function {hub.HubClassName}Client_BindProxy not generated as hub doesn't derive from Hub<T> */");
+            }
+            else
+            {
+                scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_BindProxy(proxy: SignalR.Hub.Proxy, client: I{hub.HubClassName}Client): void {{");
+                using (scriptBuilder.IncreaseIndentation())
+                {
+                    GenerateMethods(scriptBuilder, hub, converter, true, (mi, tc) => GenerateMethodProxyBinding(mi, tc, hub));
+                }
+                scriptBuilder.AppendLineIndented("}");
+            }
             scriptBuilder.AppendLine();
 
             // Build the interface containing the SERVER methods
             scriptBuilder.AppendLineIndented($"interface I{hub.HubClassName} {{");
             using (scriptBuilder.IncreaseIndentation())
             {
-                GenerateMethods(scriptBuilder, hub, converter, false);
+                GenerateMethods(scriptBuilder, hub, converter, false, (mi, tc) => GenerateMethodDeclaration(mi, tc, hub, false));
             }
             scriptBuilder.AppendLineIndented("}");
             scriptBuilder.AppendLine();
@@ -119,17 +161,17 @@ namespace TypeGap
             scriptBuilder.AppendLine();
         }
 
-        private void GenerateMethods(ScriptBuilder scriptBuilder, SignalRHubDesc hub, TypeConverter converter, bool isClient)
+        private void GenerateMethods(ScriptBuilder scriptBuilder, SignalRHubDesc hub, TypeConverter converter, bool isClient, Func<MethodInfo, TypeConverter, string> generator)
         {
             var type = isClient ? hub.HubType.GetDnxCompatible().BaseType.GenericTypeArguments.First() : hub.HubType;
             type.GetDnxCompatible().GetMethods()
                 .Where(mi => !mi.IsStatic && mi.GetBaseDefinition().DeclaringType == type)
                 .OrderBy(mi => mi.Name)
                 .ToList()
-                .ForEach(m => scriptBuilder.AppendLineIndented(GenerateMethodDeclaration(m, converter, isClient)));
+                .ForEach(m => scriptBuilder.AppendLineIndented(generator(m, converter)));
         }
 
-        private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeConverter converter, bool isClient)
+        private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeConverter converter, SignalRHubDesc hub, bool isClient)
         {
             var result = methodInfo.Name.ToCamelCase() + "(";
             result += string.Join(", ", methodInfo.GetParameters().Select(param => param.Name + ": " + converter.GetTypeScriptName(param.ParameterType)));
@@ -138,6 +180,12 @@ namespace TypeGap
             returnTypeName = (isClient || returnTypeName == "void") ? "void" : "ISignalRPromise<" + returnTypeName + ">";
             result += "): " + returnTypeName + ";";
             return result;
+        }
+
+        private string GenerateMethodProxyBinding(MethodInfo methodInfo, TypeConverter converter, SignalRHubDesc hub)
+        {
+            var paramList = string.Join(", ", methodInfo.GetParameters().Select(param => param.Name));
+            return $@"proxy.on(""{methodInfo.Name}"", ({paramList}) => client.{methodInfo.Name.ToCamelCase()}({paramList}));";
         }
     }
 }
