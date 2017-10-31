@@ -111,7 +111,7 @@ namespace TypeGap
         private void GenerateMethods(ScriptBuilder scriptBuilder, Type type, TypeConverter converter)
         {
             type.GetDnxCompatible().GetMethods()
-                .Where(mi => mi.GetBaseDefinition().DeclaringType.Name == type.Name)
+                .Where(mi => !mi.IsStatic && mi.GetBaseDefinition().DeclaringType == type)
                 .OrderBy(mi => mi.Name)
                 .ToList()
                 .ForEach(m => scriptBuilder.AppendLineIndented(GenerateMethodDeclaration(m, converter)));
