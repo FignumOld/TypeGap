@@ -19,6 +19,9 @@ namespace TypeGap
 
         public string HubClassName { get; set; }
 
+        public Func<string, string> ClientMethodProcessor { get; set; } = name => name.ToCamelCase();
+        public Func<string, string> ServerMethodProcessor { get; set; } = name => name.ToCamelCase();
+
         public string HubSignalRName
         {
             get
@@ -173,7 +176,7 @@ namespace TypeGap
 
         private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeConverter converter, SignalRHubDesc hub, bool isClient)
         {
-            var result = methodInfo.Name.ToCamelCase() + "(";
+            var result = (isClient ? hub.ClientMethodProcessor : hub.ServerMethodProcessor)(methodInfo.Name) + "(";
             result += string.Join(", ", methodInfo.GetParameters().Select(param => param.Name + ": " + converter.GetTypeScriptName(param.ParameterType)));
 
             var returnTypeName = converter.GetTypeScriptName(methodInfo.ReturnType);
@@ -185,7 +188,7 @@ namespace TypeGap
         private string GenerateMethodProxyBinding(MethodInfo methodInfo, TypeConverter converter, SignalRHubDesc hub)
         {
             var paramList = string.Join(", ", methodInfo.GetParameters().Select(param => param.Name));
-            return $@"proxy.on(""{methodInfo.Name}"", ({paramList}) => client.{methodInfo.Name.ToCamelCase()}({paramList}));";
+            return $@"proxy.on(""{methodInfo.Name}"", ({paramList}) => client.{hub.ClientMethodProcessor(methodInfo.Name)}({paramList}));";
         }
     }
 }
