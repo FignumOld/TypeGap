@@ -126,16 +126,16 @@ namespace TypeGap
                 .Where(mi => !mi.IsStatic && mi.GetBaseDefinition().DeclaringType == type)
                 .OrderBy(mi => mi.Name)
                 .ToList()
-                .ForEach(m => scriptBuilder.AppendLineIndented(GenerateMethodDeclaration(m, converter)));
+                .ForEach(m => scriptBuilder.AppendLineIndented(GenerateMethodDeclaration(m, converter, isClient)));
         }
 
-        private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeConverter converter)
+        private string GenerateMethodDeclaration(MethodInfo methodInfo, TypeConverter converter, bool isClient)
         {
             var result = methodInfo.Name.ToCamelCase() + "(";
             result += string.Join(", ", methodInfo.GetParameters().Select(param => param.Name + ": " + converter.GetTypeScriptName(param.ParameterType)));
 
             var returnTypeName = converter.GetTypeScriptName(methodInfo.ReturnType);
-            returnTypeName = returnTypeName == "void" ? "void" : "ISignalRPromise<" + returnTypeName + ">";
+            returnTypeName = (isClient || returnTypeName == "void") ? "void" : "ISignalRPromise<" + returnTypeName + ">";
             result += "): " + returnTypeName + ";";
             return result;
         }
