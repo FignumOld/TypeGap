@@ -22,7 +22,7 @@ namespace TypeGap
 
     public class TypeFluent
     {
-        private List<Type> _hubs = new List<Type>();
+        private List<SignalRHubDesc> _hubs = new List<SignalRHubDesc>();
         private List<Type> _general = new List<Type>();
         private string _namespace;
         private List<ApiControllerDesc> _apis = new List<ApiControllerDesc>();
@@ -45,18 +45,19 @@ namespace TypeGap
             return Add(typeof(T));
         }
 
-        public TypeFluent AddSignalRHub<T>()
+        public SignalRHubDesc AddSignalRHub<T>()
         {
             return AddSignalRHub(typeof(T));
         }
 
-        public TypeFluent AddSignalRHub(Type t)
+        public SignalRHubDesc AddSignalRHub(Type t)
         {
             if (t.GetDnxCompatible().BaseType == null || t.GetDnxCompatible().BaseType.FullName == null || !t.GetDnxCompatible().BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
                 throw new ArgumentException("Type must directly derive from the Hub type.");
 
-            _hubs.Add(t);
-            return this;
+            var desc = new SignalRHubDesc(t);
+            _hubs.Add(desc);
+            return desc;
         }
 
         public ApiControllerDesc AddApiDescription(string name, string route = null)
