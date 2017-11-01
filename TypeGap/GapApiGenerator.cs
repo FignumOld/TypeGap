@@ -256,7 +256,7 @@ namespace TypeGap
                     part = part.Substring(1);
 
                 routeParameters.Add(part);
-                url.Append($"/\" + {part} + \"");
+                url.Append($"/\" + encodeURIComponent({part}) + \"");
             }
 
             foreach (var r in routeParameters)
