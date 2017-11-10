@@ -283,7 +283,7 @@ namespace TypeGap
             if (finalGetParameters.Any())
             {
                 url.Append("?");
-                url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + {p.ParameterName} + \"")));
+                url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName}) + \"")));
             }
 
             return "\"" + _rewriter(url.ToString().TrimStart('/')) + "\"";
