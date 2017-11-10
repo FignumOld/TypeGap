@@ -88,9 +88,19 @@ namespace TypeGap
                 return result;
             }
 
+            // these objects generally just mean json, so 'any' is appropriate.
+            if (clrType.Namespace == "Newtonsoft.Json.Linq")
+            {
+                return "any";
+            }
+
             // Dictionaries -- these should come before IEnumerables, because they also implement IEnumerable
             if (clrType.IsIDictionary())
             {
+                if (clrType.GenericTypeArguments.Length != 2)
+                    return "{ [key: string]: any }";
+
+                // TODO: can we use Map<> instead? this will break if the first argument is not string | number.
                 return $"{{ [key: {GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[0])}]: {GetTypeScriptName(clrType.GetDnxCompatible().GetGenericArguments()[1])} }}";
             }
 
