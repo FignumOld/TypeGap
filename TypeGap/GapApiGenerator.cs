@@ -256,7 +256,7 @@ namespace TypeGap
                     part = part.Substring(1);
 
                 routeParameters.Add(part);
-                url.Append($"/\" + encodeURIComponent({part}) + \"");
+                url.Append($"/\" + encodeURIComponent({part} as any) + \"");
             }
 
             foreach (var r in routeParameters)
@@ -283,7 +283,7 @@ namespace TypeGap
             if (finalGetParameters.Any())
             {
                 url.Append("?");
-                url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName}) + \"")));
+                url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName} as any) + \"")));
             }
 
             return "\"" + _rewriter(url.ToString().TrimStart('/')) + "\"";
