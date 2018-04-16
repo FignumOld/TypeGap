@@ -63,18 +63,18 @@ namespace TypeGap.Util
                 if (method != null)
                     action.Method = method.Value;
 
-
                 // [RouteAttribute]
                 var actionRouteAttr = GetAttributes(m, "Route").FirstOrDefault();
                 if (actionRouteAttr != null)
                     action.RouteTemplate = TryGetBestPrivateMember(actionRouteAttr, "Template").ToString();
 
                 // [ProducesResponseTypeAttribute]
-                var responses = GetAttributes(type.GetDnxCompatible(), "ProducesResponseType").Select(p => new
+                var responses = GetAttributes(m, "ProducesResponseType").Select(p => new
                 {
                     Type = (Type)TryGetBestPrivateMember(p, "Type"),
                     StatusCode = (int)TryGetBestPrivateMember(p, "StatusCode"),
                 });
+
                 var bestResponse = responses.OrderBy(r => r.StatusCode).FirstOrDefault(r => r.StatusCode.ToString().StartsWith("2"));
                 if (bestResponse != null)
                 {
