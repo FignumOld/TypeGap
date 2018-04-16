@@ -89,6 +89,11 @@ namespace TypeGap
                 return "any /* IActionResult */";
             }
 
+            if (clrType.Name == "IFormCollection")
+            {
+                return "FormData";
+            }
+
             // these objects generally just mean json, so 'any' is appropriate.
             if (clrType.Namespace == "Newtonsoft.Json.Linq")
             {

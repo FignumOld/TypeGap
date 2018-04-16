@@ -313,14 +313,28 @@ namespace TypeGap
             if (!string.IsNullOrWhiteSpace(paramString))
                 paramString += ", ";
 
-            writer.WriteLine($"public {desc.NameString}({paramString}{optionsVariableName}?: {_options.OptionsClassName}): {_options.PromiseType}<{returnString}> {{");
+            string filesString = "";
+            if (desc.PostParameter != null && desc.PostParameter.ParameterType.Name == "IFormCollection")
+                filesString = "_files?: File[], ";
+
+            writer.WriteLine($"public {desc.NameString}({paramString}{filesString}{optionsVariableName}?: {_options.OptionsClassName}): {_options.PromiseType}<{returnString}> {{");
             writer.Indent++;
 
             if (desc.PostParameter != null)
             {
-                var pinit = this.CreateTypeInitializerMethod(desc.PostParameter.ParameterType);
-                if (!String.IsNullOrWhiteSpace(pinit))
-                    writer.WriteLine($"{desc.PostParameter.ParameterName} = this.from_{pinit}({desc.PostParameter.ParameterName});");
+                if (String.IsNullOrWhiteSpace(filesString))
+                {
+                    var pinit = this.CreateTypeInitializerMethod(desc.PostParameter.ParameterType);
+                    if (!String.IsNullOrWhiteSpace(pinit))
+                        writer.WriteLine($"{desc.PostParameter.ParameterName} = this.from_{pinit}({desc.PostParameter.ParameterName});");
+                }
+                else
+                {
+                    writer.WriteLine($"if (this.{checkRealFn}(_files))");
+                    writer.Indent++;
+                    writer.WriteLine($"for (const _f of _files) {{ {desc.PostParameter.ParameterName}.append(\"files[]\", _f); }}");
+                    writer.Indent--;
+                }
             }
 
             writer.WriteLine($"var url = this._basePath + {controllerName}.Endpoints.{desc.NameString}({String.Join(", ", desc.GetParameters.Select(p => p.ParameterName))});");
@@ -340,8 +354,6 @@ namespace TypeGap
 
         protected virtual ApiParamDesc[] ValidateParameters(List<ApiParamDesc> parameters, string httpMethod, string routeTemplate, out ApiParamDesc postParam)
         {
-            // ReSharper disable once ReplaceWithSingleCallToSingleOrDefault
-
             var postPossibilities = parameters
                 .Where(p => !IsRouteParameter(p.ParameterName, routeTemplate))
                 .Where(p => p.Mode != ApiParameterMode.FromUri)
