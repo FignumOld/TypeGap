@@ -145,5 +145,16 @@ namespace TypeGap
             Console.WriteLine("WARNING: Unknown conversion for type: " + GetFullName(clrType));
             return "any";
         }
+
+        public string PrettyClrTypeName(Type t)
+        {
+            if (!t.GetDnxCompatible().IsGenericType)
+                return t.FullName;
+
+            return t.Namespace + "." + string.Format(
+                "{0}<{1}>",
+                t.Name.Substring(0, t.Name.LastIndexOf("`", StringComparison.Ordinal)),
+                string.Join(", ", t.GetDnxCompatible().GetGenericArguments().Select(PrettyClrTypeName)));
+        }
     }
 }

@@ -471,6 +471,7 @@ namespace TypeGap
             {
                 StringBuilder inner = new StringBuilder();
                 inner.AppendLine($"private {prefix}_{guid}({initVariableName}: any): any {{");
+                inner.AppendLine($"{initIndent}// {_converter.GetTypeScriptName(t)} - ({_converter.PrettyClrTypeName(t)})");
                 inner.AppendLine($"{initIndent}if (!this.{checkRealFn}({initVariableName})) return {initVariableName};");
                 inner.AppendLine($"{initIndent}" + body.Replace("\n", "\n" + initIndent));
                 inner.AppendLine($"{initIndent}return {initVariableName};");
@@ -502,9 +503,19 @@ namespace TypeGap
             {
                 Type elementType = null;
                 Type[] interfaces = t.GetDnxCompatible().GetInterfaces();
-                foreach (Type i in interfaces)
-                    if (i.GetDnxCompatible().IsGenericType && i.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
-                        elementType = i.GetDnxCompatible().GetGenericArguments()[0];
+
+                if (t.IsIDictionary())
+                {
+                    foreach (Type i in interfaces)
+                        if (i.GetDnxCompatible().IsGenericType && i.GetGenericTypeDefinition().Equals(typeof(IDictionary<,>)))
+                            elementType = i.GetDnxCompatible().GetGenericArguments()[1];
+                }
+                else
+                {
+                    foreach (Type i in interfaces)
+                        if (i.GetDnxCompatible().IsGenericType && i.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
+                            elementType = i.GetDnxCompatible().GetGenericArguments()[0];
+                }
 
                 if (elementType == null)
                     throw new Exception("Unknown error occurred parsing type: " + t.FullName + ". Considered an enumerable, but element type could not be found.");
@@ -514,9 +525,9 @@ namespace TypeGap
                     return null;
 
                 StringBuilder inner = new StringBuilder();
-                inner.AppendLine($"for (let i = 0; i < {initVariableName}.length; i++)");
+                inner.AppendLine($"for (let key in {initVariableName})");
                 //inner.AppendLine($"{initIndent}if (this.{checkRealFn}({initVariableName}[i]))");
-                inner.AppendLine($"{initIndent}{initVariableName}[i] = this.{prefix}_{pmm}({initVariableName}[i]);");
+                inner.AppendLine($"{initIndent}{initVariableName}[key] = this.{prefix}_{pmm}({initVariableName}[key]);");
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
 
@@ -547,8 +558,12 @@ namespace TypeGap
                 sb.AppendLine(GenInitBody("to"));
             }
 
+            var result = sb.ToString();
+            if (String.IsNullOrWhiteSpace(result))
+                return null;
+
             keyLookup[t] = guid;
-            bodyLookup[guid] = sb.ToString();
+            bodyLookup[guid] = result;
 
             return guid;
         }
