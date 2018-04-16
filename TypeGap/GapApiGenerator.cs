@@ -463,10 +463,12 @@ namespace TypeGap
             if (tsName.StartsWith("any")) // we won't be able to process any types that we don't understand.
                 return null;
 
+            var it = _options.TypeInitializers.SingleOrDefault(g => g.CanConvertType(t));
+            if (it != null && keyLookup.ContainsKey(it.GetType()))
+                return keyLookup[it.GetType()];
+
             if (keyLookup.ContainsKey(t))
                 return keyLookup[t];
-
-            var it = _options.TypeInitializers.SingleOrDefault(g => g.CanConvertType(t));
 
             var guid = Guid.NewGuid().ToString().ToLower().Replace("-", "");
             StringBuilder sb = new StringBuilder();
@@ -568,6 +570,9 @@ namespace TypeGap
             var result = sb.ToString();
             if (String.IsNullOrWhiteSpace(result))
                 return null;
+
+            if (it != null)
+                keyLookup[it.GetType()] = guid;
 
             keyLookup[t] = guid;
             bodyLookup[guid] = result;
