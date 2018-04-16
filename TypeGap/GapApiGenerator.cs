@@ -235,6 +235,7 @@ namespace TypeGap
         {
             List<string> routeParameters = new List<string>();
             StringBuilder url = new StringBuilder();
+            bool writtenOptionalRoute = false;
 
             var parts = template.Split('/');
             for (int i = 0; i < parts.Length; i++)
@@ -255,12 +256,22 @@ namespace TypeGap
                 if (part.StartsWith("*"))
                     part = part.Substring(1);
 
+                if (part.EndsWith("?"))
+                    writtenOptionalRoute = true;
+                else if (writtenOptionalRoute == true)
+                    throw new Exception($"In action '{action.ActionName}', required route parameter must not come after an optional route parameter in template: '{template}'.");
+
                 routeParameters.Add(part);
-                url.Append($"/\" + encodeURIComponent({part} as any) + \"");
+
+                url.Append($"/\" + encodeURIComponent({part.TrimEnd('?')} as any) + \"");
             }
 
-            foreach (var r in routeParameters)
+            foreach (var rtemplate in routeParameters)
             {
+                var r = rtemplate;
+                var templateMarkedOptional = r.EndsWith("?");
+                r = r.TrimEnd('?');
+
                 var get = getParameters.FirstOrDefault(g => g.ParameterName.Equals(r));
                 if (get == null)
                 {
@@ -268,6 +279,13 @@ namespace TypeGap
                                         $"Please check your route template: '{template}'." +
                                         $"Parameters: [{String.Join(", ", action.Parameters.Select(s => s.ParameterName))}]");
                 }
+
+                if (templateMarkedOptional != get.IsOptional)
+                {
+                    throw new Exception($"In action '{action.ActionName}', route parameter `{r}` is marked optional={get.IsOptional}, but the route " +
+                                        $"template '{template}' is marked optional={templateMarkedOptional}");
+                }
+
                 var typeCode = Type.GetTypeCode(get.ParameterType);
                 switch (typeCode)
                 {
@@ -275,18 +293,19 @@ namespace TypeGap
                     case TypeCode.Object:
                         throw new Exception($"In action '{action.ActionName}' parameter type '{get.ParameterType.Name}' is not suitable " +
                                             $"as a route parameter for template '{template}'. (Type code: {typeCode})");
-
                 }
             }
 
-            var finalGetParameters = getParameters.Where(p => routeParameters.All(r => !r.Equals(p.ParameterName, StringComparison.OrdinalIgnoreCase)));
+            var finalGetParameters = getParameters.Where(p => routeParameters.All(r => !r.TrimEnd('?').Equals(p.ParameterName, StringComparison.OrdinalIgnoreCase)));
             if (finalGetParameters.Any())
             {
                 url.Append("?");
                 url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName} as any) + \"")));
             }
 
-            return "\"" + _rewriter(url.ToString().TrimStart('/')) + "\"";
+            var tmp = "\"" + _rewriter(url.ToString().TrimStart('/'));
+            tmp = tmp.Substring(0, tmp.Length - 4);
+            return tmp;
         }
     }
 }
