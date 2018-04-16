@@ -503,6 +503,9 @@ namespace TypeGap
                     if (i.GetDnxCompatible().IsGenericType && i.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
                         elementType = i.GetDnxCompatible().GetGenericArguments()[0];
 
+                if (elementType == null)
+                    throw new Exception("Unknown error occurred parsing type: " + t.FullName + ". Considered an enumerable, but element type could not be found.");
+
                 var pmm = CreateTypeInitializerMethod(elementType);
                 if (pmm == null)
                     return null;
