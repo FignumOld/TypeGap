@@ -92,7 +92,7 @@ namespace TypeGap
 
     public class GapApiGeneratorOptions
     {
-        public Func<string, string> UrlRewriter = (v) => v;
+        public Func<string, string> UrlRewriter { get; set; } = (v) => v;
         public string PromiseType { get; set; } = "Promise";
         public string EssentialsImportPath { get; set; } = "./Ajax";
         public string HeaderText { get; set; }
