@@ -303,9 +303,7 @@ namespace TypeGap
                 url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName} as any) + \"")));
             }
 
-            var tmp = "\"" + _rewriter(url.ToString().TrimStart('/'));
-            tmp = tmp.Substring(0, tmp.Length - 4);
-            return tmp;
+            return "\"" + _rewriter(url.ToString().TrimStart('/'));
         }
     }
 }
