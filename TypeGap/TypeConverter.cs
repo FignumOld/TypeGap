@@ -69,7 +69,6 @@ namespace TypeGap
         {
             string result;
 
-
             if (clrType.IsNullable())
             {
                 clrType = clrType.GetUnderlyingNullableType();
@@ -83,6 +82,11 @@ namespace TypeGap
             if (_cache.TryGetValue(clrType, out result))
             {
                 return result;
+            }
+
+            if (clrType.Name == "IActionResult")
+            {
+                return "any /* IActionResult */";
             }
 
             // these objects generally just mean json, so 'any' is appropriate.

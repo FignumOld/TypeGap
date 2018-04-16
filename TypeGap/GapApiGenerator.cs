@@ -101,7 +101,7 @@ namespace TypeGap
         public string AjaxClassName { get; set; } = "Ajax";
         public string ControllerBaseClass { get; set; }
         public string OptionsClassName { get; set; } = "IExtendedAjaxSettings";
-        public Func<AjaxExecContext, string> AjaxExecFn { get; set; } = (c) => $"this.{c.Ajax}.execute({c.Url}, {c.HttpMethod}, {c.Post}, {c.Options})";
+        public Func<AjaxExecContext, string> AjaxExecFn { get; set; } = (c) => $"this.{c.Ajax}.{c.HttpMethod}({c.Url}, {c.Post}, {c.Options})";
         public List<GapInitializer> TypeInitializers { get; set; } = new List<GapInitializer>();
     }
 
@@ -305,8 +305,6 @@ namespace TypeGap
             string returnString;
             if (action.ReturnType == null)
                 returnString = "any";
-            else if (action.ReturnType.Name == "IActionResult")
-                returnString = "any /* IActionResult */";
             else
                 returnString = _converter.GetTypeScriptName(action.ReturnType);
 
@@ -456,6 +454,15 @@ namespace TypeGap
 
         protected virtual string CreateTypeInitializerMethod(Type t)
         {
+            if (t.IsGenericTask())
+                t = t.GetUnderlyingTaskType();
+
+            var tsName = _converter.GetTypeScriptName(t);
+            var clrName = _converter.PrettyClrTypeName(t);
+
+            if (tsName.StartsWith("any")) // we won't be able to process any types that we don't understand.
+                return null;
+
             if (keyLookup.ContainsKey(t))
                 return keyLookup[t];
 
@@ -471,7 +478,7 @@ namespace TypeGap
             {
                 StringBuilder inner = new StringBuilder();
                 inner.AppendLine($"private {prefix}_{guid}({initVariableName}: any): any {{");
-                inner.AppendLine($"{initIndent}// {_converter.GetTypeScriptName(t)} - ({_converter.PrettyClrTypeName(t)})");
+                inner.AppendLine($"{initIndent}// {tsName} - ({clrName})");
                 inner.AppendLine($"{initIndent}if (!this.{checkRealFn}({initVariableName})) return {initVariableName};");
                 inner.AppendLine($"{initIndent}" + body.Replace("\n", "\n" + initIndent));
                 inner.AppendLine($"{initIndent}return {initVariableName};");
