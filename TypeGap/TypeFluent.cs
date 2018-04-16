@@ -152,22 +152,22 @@ namespace TypeGap
             return this;
         }
 
-        public void Build(string definitionPath, string servicesPath, string enumsPath)
+        public void Build(string definitionPath, string servicesPath, string enumsPath, GapApiGeneratorOptions options = null)
         {
-            var output = Build();
+            var output = Build(options);
             WriteFile(definitionPath, output.DefinitionTS);
             WriteFile(servicesPath, output.ServicesTS);
             WriteFile(enumsPath, output.EnumsTS);
         }
 
-        public void Build(string basePath, string definitionName, string servicesName, string enumsName)
+        public void Build(string basePath, string definitionName, string servicesName, string enumsName, GapApiGeneratorOptions options = null)
         {
-            Build(Path.Combine(basePath, definitionName), Path.Combine(basePath, servicesName), Path.Combine(basePath, enumsName));
+            Build(Path.Combine(basePath, definitionName), Path.Combine(basePath, servicesName), Path.Combine(basePath, enumsName), options);
         }
 
-        public void Build(string outputDirectory)
+        public void Build(string outputDirectory, GapApiGeneratorOptions options = null)
         {
-            Build(outputDirectory, "definitions.d.ts", "services.ts", "enums.ts");
+            Build(outputDirectory, "definitions.d.ts", "services.ts", "enums.ts", options);
         }
 
         private static void ProcessTypes(IEnumerable<Type> types, TypeScriptFluent generator)
