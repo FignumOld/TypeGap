@@ -47,6 +47,7 @@ namespace TypeGap
         {
             var action = new ApiActionDesc();
             action.ActionName = name;
+
             action.ReturnType = returnType;
             action.Method = method;
 
@@ -84,13 +85,15 @@ namespace TypeGap
         private readonly Func<string, string> _rewriter;
         private readonly string _promiseType;
         private readonly string _ajaxPath;
+        private readonly bool _methodAsParam;
 
-        public GapApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType, string ajaxPath)
+        public GapApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType, string ajaxPath, bool methodAsParam)
         {
             _converter = converter;
             _rewriter = rewriter;
             _promiseType = promiseType;
             _ajaxPath = ajaxPath;
+            _methodAsParam = methodAsParam;
         }
 
         public virtual void WriteServices(ApiControllerDesc[] controllers, CustomIndentedTextWriter writer)
@@ -170,7 +173,13 @@ namespace TypeGap
             template = JoinUrls(template, action.RouteTemplate);
             template = Regex.Replace(template, regex, action.ActionName, RegexOptions.IgnoreCase);
 
-            var returnString = _converter.GetTypeScriptName(action.ReturnType);
+            string returnString;
+            if (action.ReturnType == null)
+                returnString = "any";
+            else if (action.ReturnType.Name == "IActionResult")
+                returnString = "any /* IActionResult */";
+            else
+                returnString = _converter.GetTypeScriptName(action.ReturnType);
 
             var httpMethod = action.Method.ToString().ToLower();
 
@@ -184,7 +193,14 @@ namespace TypeGap
             writer.WriteLine($"public {action.ActionName}({paramString}ajaxOptions?: IExtendedAjaxSettings): {_promiseType}<{returnString}> {{");
             writer.Indent++;
             writer.WriteLine("var url = this._hostname + " + BuildUrlString(action, template, getParameters) + ";");
-            writer.WriteLine($"return this._ajax.{httpMethod}(url, {postParameter?.ParameterName ?? "null"}, ajaxOptions);");
+            if (_methodAsParam)
+            {
+                writer.WriteLine($"return this._ajax.exec(url, {httpMethod.ToUpper()}, {postParameter?.ParameterName ?? "null"}, ajaxOptions);");
+            }
+            else
+            {
+                writer.WriteLine($"return this._ajax.{httpMethod.ToLower()}(url, {postParameter?.ParameterName ?? "null"}, ajaxOptions);");
+            }
             writer.Indent--;
             writer.WriteLine("}");
         }

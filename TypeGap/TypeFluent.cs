@@ -33,6 +33,7 @@ namespace TypeGap
         private GapEnumGenerator _enumGenerator = new RegularEnumGenerator(false, EnumValueMode.Number);
         private string _indent = "    ";
         private ITsModelVisitor _modelVisitor;
+        private bool _methodAsParam = false;
 
         public TypeFluent Add(Type t)
         {
@@ -107,7 +108,7 @@ namespace TypeGap
             ProcessTypes(_general, fluent);
             fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
 
-            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName);
+            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName, _methodAsParam);
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
@@ -134,6 +135,12 @@ namespace TypeGap
         public TypeFluent WithPromiseType(string promise)
         {
             _promiseType = promise;
+            return this;
+        }
+
+        public TypeFluent WithHttpMethodAsParam(bool yes)
+        {
+            _methodAsParam = yes;
             return this;
         }
 
