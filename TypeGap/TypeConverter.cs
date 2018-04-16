@@ -56,9 +56,6 @@ namespace TypeGap
 
         private string GetFullName(Type clrType)
         {
-            if (clrType == null)
-                System.Diagnostics.Debugger.Break();
-
             string moduleName = null;
 
             var tsMember = _fluent.ModelBuilder.GetType(clrType) as TsModuleMember;

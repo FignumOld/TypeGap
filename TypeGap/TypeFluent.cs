@@ -26,14 +26,10 @@ namespace TypeGap
         private List<Type> _general = new List<Type>();
         private string _namespace;
         private List<ApiControllerDesc> _apis = new List<ApiControllerDesc>();
-        private string _promiseType = "Promise";
-        private Func<string, string> _urlRewriter = (u) => u;
-        private string _ajaxName = "./Ajax";
         private bool _generateNotice = true;
         private GapEnumGenerator _enumGenerator = new RegularEnumGenerator(false, EnumValueMode.Number);
         private string _indent = "    ";
         private ITsModelVisitor _modelVisitor;
-        private bool _methodAsParam = false;
 
         public TypeFluent Add(Type t)
         {
@@ -80,7 +76,7 @@ namespace TypeGap
             return api;
         }
 
-        public TypeFluidOutput Build()
+        public TypeFluidOutput Build(GapApiGeneratorOptions options = null)
         {
             var services = new StringWriter();
             var servicesWriter = new CustomIndentedTextWriter(services, _indent);
@@ -108,7 +104,7 @@ namespace TypeGap
             ProcessTypes(_general, fluent);
             fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
 
-            var apiGen = new GapApiGenerator(converter, _urlRewriter, _promiseType, _ajaxName, _methodAsParam);
+            var apiGen = new GapApiGenerator(converter, _indent, options ?? new GapApiGeneratorOptions());
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
@@ -132,33 +128,9 @@ namespace TypeGap
             return this;
         }
 
-        public TypeFluent WithPromiseType(string promise)
-        {
-            _promiseType = promise;
-            return this;
-        }
-
-        public TypeFluent WithHttpMethodAsParam(bool yes)
-        {
-            _methodAsParam = yes;
-            return this;
-        }
-
-        public TypeFluent WithUrlRewriter(Func<string, string> rewriter)
-        {
-            _urlRewriter = rewriter;
-            return this;
-        }
-
         public TypeFluent WithGeneratedNotice(bool generateNotice = true)
         {
             _generateNotice = generateNotice;
-            return this;
-        }
-
-        public TypeFluent WithAjaxServicePath(string path)
-        {
-            _ajaxName = path;
             return this;
         }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TypeGap.Extensions;
 using TypeGap.Util;
 
 namespace TypeGap
@@ -79,28 +81,61 @@ namespace TypeGap
         public ApiParameterMode Mode { get; set; }
     }
 
+    public class AjaxExecContext
+    {
+        public string Ajax { get; set; }
+        public string Url { get; set; }
+        public string Post { get; set; }
+        public string HttpMethod { get; set; }
+        public string Options { get; set; }
+    }
+
+    public class GapApiGeneratorOptions
+    {
+        public Func<string, string> UrlRewriter = (v) => v;
+        public string PromiseType { get; set; } = "Promise";
+        public string EssentialsImportPath { get; set; } = "./Ajax";
+        public string HeaderText { get; set; }
+        public string FooterText { get; set; }
+        public string AjaxClassName { get; set; } = "Ajax";
+        public string ControllerBaseClass { get; set; }
+        public string OptionsClassName { get; set; } = "IExtendedAjaxSettings";
+        public Func<AjaxExecContext, string> AjaxExecFn { get; set; } = (c) => $"this.{c.Ajax}.execute({c.Url}, {c.HttpMethod}, {c.Post}, {c.Options})";
+        public List<GapInitializer> TypeInitializers { get; set; } = new List<GapInitializer>();
+    }
+
     public class GapApiGenerator
     {
         private readonly TypeConverter _converter;
-        private readonly Func<string, string> _rewriter;
-        private readonly string _promiseType;
-        private readonly string _ajaxPath;
-        private readonly bool _methodAsParam;
+        private readonly GapApiGeneratorOptions _options;
+        private readonly string checkRealFn = "is_real";
+        private readonly string initVariableName = "obj";
+        private readonly string initIndent = "    ";
+        private readonly string ajaxVariableName = "_ajax";
 
-        public GapApiGenerator(TypeConverter converter, Func<string, string> rewriter, string promiseType, string ajaxPath, bool methodAsParam)
+        private readonly string optionsVariableName = "ajaxOptions";
+
+        public GapApiGenerator(TypeConverter converter, string indent, GapApiGeneratorOptions options)
         {
             _converter = converter;
-            _rewriter = rewriter;
-            _promiseType = promiseType;
-            _ajaxPath = ajaxPath;
-            _methodAsParam = methodAsParam;
+            _options = options;
+            initIndent = indent;
         }
 
         public virtual void WriteServices(ApiControllerDesc[] controllers, CustomIndentedTextWriter writer)
         {
             var controllerNames = controllers.Select(d => d.ControllerName).ToArray();
 
-            writer.WriteLine($"import {{ Ajax, IExtendedAjaxSettings }} from \"{_ajaxPath}\";");
+            var baseClass = String.IsNullOrWhiteSpace(_options.ControllerBaseClass) ? "" : $", {_options.ControllerBaseClass}";
+
+            writer.WriteLine($"import {{ {_options.AjaxClassName}, {_options.OptionsClassName}{baseClass} }} from \"{_options.EssentialsImportPath}\";");
+
+            if (!String.IsNullOrEmpty(_options.HeaderText))
+            {
+                writer.WriteLine("// === BEGIN CUSTOM HEADER CODE ===");
+                writer.WriteLine(_options.HeaderText);
+                writer.WriteLine("// === END CUSTOM HEADER CODE ===");
+            }
 
             writer.WriteLine();
 
@@ -111,6 +146,13 @@ namespace TypeGap
             {
                 WriteController(d, writer);
                 writer.WriteLine();
+            }
+
+            if (!String.IsNullOrEmpty(_options.FooterText))
+            {
+                writer.WriteLine("// === BEGIN CUSTOM FOOTER CODE ===");
+                writer.WriteLine(_options.FooterText);
+                writer.WriteLine("// === END CUSTOM FOOTER CODE ===");
             }
         }
 
@@ -123,11 +165,11 @@ namespace TypeGap
                 writer.WriteLine($"public readonly {n}: {n}Service;");
             }
 
-            writer.WriteLine("public constructor(hostname: string, ajaxDefaults?: IExtendedAjaxSettings) {");
+            writer.WriteLine($"public constructor(hostname: string, {optionsVariableName}?: {_options.OptionsClassName}) {{");
             writer.Indent++;
             foreach (var n in names)
             {
-                writer.WriteLine($"this.{n} = new {n}Service(hostname, ajaxDefaults);");
+                writer.WriteLine($"this.{n} = new {n}Service(hostname, {optionsVariableName});");
             }
             writer.Indent--;
             writer.WriteLine("}");
@@ -141,14 +183,16 @@ namespace TypeGap
             string template = controller.RouteTemplate;
             template = Regex.Replace(template, @"(?:\[controller\]|\{controller\})", controller.ControllerName, RegexOptions.IgnoreCase);
 
-            writer.WriteLine($"export class {controller.ControllerName}Service {{");
+            var baseClass = String.IsNullOrWhiteSpace(_options.ControllerBaseClass) ? "" : $" extends {_options.ControllerBaseClass}";
+
+            writer.WriteLine($"export class {controller.ControllerName}Service{baseClass} {{");
             writer.Indent++;
             writer.WriteLine("private _hostname: string;");
-            writer.WriteLine("private _ajax: Ajax;");
-            writer.WriteLine("public constructor(hostname: string, ajaxDefaults?: IExtendedAjaxSettings) {");
+            writer.WriteLine($"private {ajaxVariableName}: {_options.AjaxClassName};");
+            writer.WriteLine($"public constructor(hostname: string, {optionsVariableName}?: {_options.OptionsClassName}) {{");
             writer.Indent++;
             writer.WriteLine("this._hostname = (hostname.substr(-1) == \"/\") ? hostname : hostname + \"/\";");
-            writer.WriteLine("this._ajax = new Ajax(ajaxDefaults);");
+            writer.WriteLine($"this.{ajaxVariableName} = new {_options.AjaxClassName}({optionsVariableName});");
             writer.Indent--;
             writer.WriteLine("}");
 
@@ -157,6 +201,31 @@ namespace TypeGap
                 writer.WriteLine();
                 WriteMethod(action, writer, template);
             }
+
+            if (bodyLookup.Values.Any())
+            {
+                writer.WriteLine();
+                writer.WriteLine("// ======================================================================================");
+                writer.WriteLine("// The code below is generated by the chosen type initializer settings. It will serialize");
+                writer.WriteLine("// and deserialize types as described when they cross the http boundry.");
+                writer.WriteLine("// ======================================================================================");
+                writer.WriteLine();
+
+                foreach (var helper in bodyLookup.Values.SelectMany(v => v.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)))
+                {
+                    writer.WriteLine(helper);
+                }
+
+                writer.WriteLine($"private {checkRealFn}({initVariableName}: any): boolean {{");
+                writer.Indent++;
+                writer.WriteLine("return value !== \"\" && value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0);");
+                writer.Indent--;
+                writer.WriteLine("}");
+            }
+
+            // we need to regen lookups for each controller that needs it
+            keyLookup.Clear();
+            bodyLookup.Clear();
 
             writer.Indent--;
             writer.WriteLine("}");
@@ -173,6 +242,7 @@ namespace TypeGap
             template = JoinUrls(template, action.RouteTemplate);
             template = Regex.Replace(template, regex, action.ActionName, RegexOptions.IgnoreCase);
 
+
             string returnString;
             if (action.ReturnType == null)
                 returnString = "any";
@@ -186,21 +256,37 @@ namespace TypeGap
             ApiParamDesc postParameter = null;
             ApiParamDesc[] getParameters = ValidateParameters(action.Parameters, httpMethod, template, out postParameter);
 
-            var paramString = BuildMethodParameters(action);
+            var paramString = String.Join(", ", action.Parameters.Select(p => $"{p.ParameterName}{(p.IsOptional ? "?" : "")}: {_converter.GetTypeScriptName(p.ParameterType)}"));
+
             if (!string.IsNullOrWhiteSpace(paramString))
                 paramString += ", ";
 
-            writer.WriteLine($"public {action.ActionName}({paramString}ajaxOptions?: IExtendedAjaxSettings): {_promiseType}<{returnString}> {{");
+            writer.WriteLine($"public {action.ActionName}({paramString}{optionsVariableName}?: {_options.OptionsClassName}): {_options.PromiseType}<{returnString}> {{");
             writer.Indent++;
+
+            foreach (var param in action.Parameters)
+            {
+                var pinit = this.CreateTypeInitializerMethod(param.ParameterType);
+                if (pinit != null)
+                {
+                    writer.WriteLine($"if (this.{checkRealFn}({param.ParameterName}))");
+                    writer.Indent++;
+                    writer.WriteLine($"{param.ParameterName} = this.from_{pinit}({param.ParameterName});");
+                    writer.Indent--;
+                }
+            }
+
             writer.WriteLine("var url = this._hostname + " + BuildUrlString(action, template, getParameters) + ";");
-            if (_methodAsParam)
-            {
-                writer.WriteLine($"return this._ajax.exec(url, {httpMethod.ToUpper()}, {postParameter?.ParameterName ?? "null"}, ajaxOptions);");
-            }
+
+            var ajaxCtx = new AjaxExecContext { Ajax = ajaxVariableName, HttpMethod = httpMethod, Options = optionsVariableName, Post = postParameter?.ParameterName ?? "null", Url = "url" };
+            writer.Write(_options.AjaxExecFn(ajaxCtx).TrimEnd(';'));
+
+            var initializer = this.CreateTypeInitializerMethod(action.ReturnType);
+            if (String.IsNullOrWhiteSpace(initializer))
+                writer.WriteLine(";");
             else
-            {
-                writer.WriteLine($"return this._ajax.{httpMethod.ToLower()}(url, {postParameter?.ParameterName ?? "null"}, ajaxOptions);");
-            }
+                writer.WriteLine($".then(this.to_{initializer});");
+
             writer.Indent--;
             writer.WriteLine("}");
         }
@@ -234,12 +320,6 @@ namespace TypeGap
                 output.Append("/" + u.Trim('/'));
 
             return output.ToString().Trim('/');
-        }
-
-        protected virtual string BuildMethodParameters(ApiActionDesc method)
-        {
-            var param = method.Parameters;
-            return String.Join(", ", param.Select(p => $"{p.ParameterName}{(p.IsOptional ? "?" : "")}: {_converter.GetTypeScriptName(p.ParameterType)}"));
         }
 
         protected virtual bool IsRouteParameter(string name, string template)
@@ -319,7 +399,105 @@ namespace TypeGap
                 url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName} as any) + \"")));
             }
 
-            return "\"" + _rewriter(url.ToString().TrimStart('/'));
+            return "\"" + _options.UrlRewriter(url.ToString().TrimStart('/')) + "\"";
+        }
+
+        protected Dictionary<Type, string> keyLookup = new Dictionary<Type, string>();
+        protected Dictionary<string, string> bodyLookup = new Dictionary<string, string>();
+
+        protected virtual string CreateTypeInitializerMethod(Type t)
+        {
+            if (keyLookup.ContainsKey(t))
+                return keyLookup[t];
+
+            var it = _options.TypeInitializers.SingleOrDefault(g => g.CanConvertType(t));
+
+            var guid = Guid.NewGuid().ToString().ToLower().Replace("-", "");
+            StringBuilder sb = new StringBuilder();
+
+            if (it == null && Type.GetTypeCode(t) != TypeCode.Object)
+                return null;
+
+            string GenInitMethod(string prefix, string body)
+            {
+                StringBuilder inner = new StringBuilder();
+                inner.AppendLine($"private {prefix}_{guid}({initVariableName}: any): any {{");
+                inner.AppendLine($"{initIndent}" + body.Replace("\n", "\n" + initIndent));
+                inner.AppendLine($"{initIndent}return {initVariableName};");
+                inner.AppendLine($"}}");
+                return inner.ToString().Trim();
+            }
+
+            string GenInitBody(string prefix)
+            {
+                StringBuilder inner = new StringBuilder();
+                var rpro = t.GetDnxCompatible()
+                    .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                    .ToDictionary(k => k.Name, k => k.PropertyType)
+                    .Concat(t.GetDnxCompatible().GetFields(BindingFlags.Instance | BindingFlags.Public).ToDictionary(k => k.Name, k => k.FieldType));
+
+                foreach (var prop in rpro)
+                {
+                    var pmm = CreateTypeInitializerMethod(prop.Value);
+                    if (pmm != null)
+                    {
+                        inner.AppendLine($"if (this.{checkRealFn}({initVariableName}))");
+                        inner.AppendLine($"{initIndent}{initVariableName}.{prop.Key} = this.{prefix}_{pmm}({initVariableName}.{prop.Key});");
+                    }
+                }
+                return GenInitMethod(prefix, inner.ToString().Trim());
+            }
+
+            string GenArrayBody(string prefix)
+            {
+                Type elementType = null;
+                Type[] interfaces = t.GetDnxCompatible().GetInterfaces();
+                foreach (Type i in interfaces)
+                    if (i.GetDnxCompatible().IsGenericType && i.GetGenericTypeDefinition().Equals(typeof(IEnumerable<>)))
+                        elementType = i.GetDnxCompatible().GetGenericArguments()[0];
+
+                var pmm = CreateTypeInitializerMethod(elementType);
+                if (pmm == null)
+                    return null;
+
+                StringBuilder inner = new StringBuilder();
+                inner.AppendLine($"for (let i = 0; i < {initVariableName}.length; i++)");
+                inner.AppendLine($"{initIndent}if (this.{checkRealFn}({initVariableName}[i]))");
+                inner.AppendLine($"{initIndent}{initIndent}{initVariableName}[i] = this.{prefix}_{pmm}({initVariableName}[i]);");
+                return GenInitMethod(prefix, inner.ToString().Trim());
+            }
+
+            string GenBasic(string prefix, string v)
+            {
+                StringBuilder inner = new StringBuilder();
+                inner.AppendLine($"if (this.{checkRealFn}({initVariableName}))");
+                inner.AppendLine($"{initIndent}{initVariableName} = {v};");
+                return GenInitMethod(prefix, inner.ToString().Trim());
+            }
+
+            if (it != null)
+            {
+                sb.AppendLine(GenBasic("from", it.FromTsType(initVariableName)));
+                sb.AppendLine();
+                sb.AppendLine(GenBasic("to", it.ToTsType(initVariableName)));
+            }
+            else if (typeof(IEnumerable).GetDnxCompatible().IsAssignableFrom(t))
+            {
+                sb.AppendLine(GenArrayBody("from"));
+                sb.AppendLine();
+                sb.AppendLine(GenArrayBody("to"));
+            }
+            else
+            {
+                sb.AppendLine(GenInitBody("from"));
+                sb.AppendLine();
+                sb.AppendLine(GenInitBody("to"));
+            }
+
+            keyLookup[t] = guid;
+            bodyLookup[guid] = sb.ToString();
+
+            return guid;
         }
     }
 }
