@@ -318,9 +318,12 @@ namespace TypeGap
             writer.WriteLine($"public {desc.NameString}({paramString}{optionsVariableName}?: {_options.OptionsClassName}): {_options.PromiseType}<{returnString}> {{");
             writer.Indent++;
 
-            var pinit = this.CreateTypeInitializerMethod(desc.PostParameter.ParameterType);
-            if (!String.IsNullOrWhiteSpace(pinit))
-                writer.WriteLine($"{desc.PostParameter.ParameterName} = this.from_{pinit}({desc.PostParameter.ParameterName});");
+            if (desc.PostParameter != null)
+            {
+                var pinit = this.CreateTypeInitializerMethod(desc.PostParameter.ParameterType);
+                if (!String.IsNullOrWhiteSpace(pinit))
+                    writer.WriteLine($"{desc.PostParameter.ParameterName} = this.from_{pinit}({desc.PostParameter.ParameterName});");
+            }
 
             writer.WriteLine($"var url = this._basePath + {controllerName}.Endpoints.{desc.NameString}({String.Join(", ", desc.GetParameters.Select(p => p.ParameterName))});");
 
