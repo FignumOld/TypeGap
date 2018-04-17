@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -100,6 +101,7 @@ namespace TypeGap
         public string FooterText { get; set; }
         public string AjaxClassName { get; set; } = "Ajax";
         public string ControllerBaseClass { get; set; }
+        public bool HideActionsWithNoReturn { get; set; } = true;
         public string OptionsClassName { get; set; } = "IExtendedAjaxSettings";
         public Func<AjaxExecContext, string> AjaxExecFn { get; set; } = (c) => $"this.{c.Ajax}.{c.HttpMethod}({c.Url}, {c.Post}, {c.Options})";
         public List<GapInitializer> TypeInitializers { get; set; } = new List<GapInitializer>();
@@ -113,7 +115,6 @@ namespace TypeGap
         private readonly string initVariableName = "value";
         private readonly string initIndent = "    ";
         private readonly string ajaxVariableName = "_ajax";
-
         private readonly string optionsVariableName = "ajaxOptions";
 
         public GapApiGenerator(TypeConverter converter, string indent, GapApiGeneratorOptions options)
@@ -317,7 +318,15 @@ namespace TypeGap
             if (desc.PostParameter != null && desc.PostParameter.ParameterType.Name == "IFormCollection")
                 filesString = "_files?: File[], ";
 
-            writer.WriteLine($"public {desc.NameString}({paramString}{filesString}{optionsVariableName}?: {_options.OptionsClassName}): {_options.PromiseType}<{returnString}> {{");
+            var modifier = "public";
+            if (_options.HideActionsWithNoReturn && returnString.StartsWith("any"))
+            {
+                writer.WriteLine("// This method is hidden because it's return type is not specified and HideActionsWithNoReturn=True");
+                writer.WriteLine("// Either add a return type (check [ProducesResponseType]) or set HideActionsWithNoReturn to False");
+                modifier = "protected";
+            }
+
+            writer.WriteLine($"{modifier} {desc.NameString}({paramString}{filesString}{optionsVariableName}?: {_options.OptionsClassName}): {_options.PromiseType}<{returnString}> {{");
             writer.Indent++;
 
             if (desc.PostParameter != null)
@@ -482,7 +491,11 @@ namespace TypeGap
             if (keyLookup.ContainsKey(t))
                 return keyLookup[t];
 
-            var guid = Guid.NewGuid().ToString().ToLower().Replace("-", "");
+            //var guid = Guid.NewGuid().ToString().ToLower().Replace("-", "");
+            string guid;
+            using (MD5 md5 = MD5.Create())
+                guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(t.AssemblyQualifiedName)).Select(b => b.ToString("x2")));
+
             StringBuilder sb = new StringBuilder();
 
             if (it == null && Type.GetTypeCode(t) != TypeCode.Object)
