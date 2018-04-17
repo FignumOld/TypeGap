@@ -275,19 +275,21 @@ namespace TypeGap
             var httpMethod = action.Method.ToString().ToLower();
 
             ApiParamDesc postParameter = null;
-            ApiParamDesc[] getParameters = ValidateParameters(action.Parameters, httpMethod, template, out postParameter);
+            ApiParamDesc modelParameter = null;
+            ApiParamDesc[] getParameters = ValidateParameters(action.Parameters, httpMethod, template, out postParameter, out modelParameter);
 
             string GetParamString(IEnumerable<ApiParamDesc> aa) => String.Join(", ", aa.Select(p => $"{p.ParameterName}{(p.IsOptional ? "?" : "")}: {_converter.GetTypeScriptName(p.ParameterType)}"));
 
-            var path = BuildUrlString(action, template, getParameters);
+            var path = BuildUrlString(action, template, getParameters, modelParameter);
 
             return new ParsedApiDesc
             {
-                EndpointParamString = GetParamString(getParameters),
+                EndpointParamString = GetParamString(modelParameter != null ? new[] { modelParameter } : getParameters),
                 ParamString = GetParamString(action.Parameters),
                 MethodString = httpMethod,
                 PathString = path,
                 PostParameter = postParameter,
+                ModelParameter = modelParameter,
                 GetParameters = getParameters,
                 NameString = _options.FunctionNameRewriter(action.ActionName),
                 Action = action,
@@ -345,7 +347,9 @@ namespace TypeGap
                 }
             }
 
-            writer.WriteLine($"var url = this.endpoints.{desc.NameString}({String.Join(", ", desc.GetParameters.Select(p => p.ParameterName))});");
+            var excParams = desc.ModelParameter == null ? desc.GetParameters : new[] { desc.ModelParameter };
+
+            writer.WriteLine($"var url = this.endpoints.{desc.NameString}({String.Join(", ", excParams.Select(p => p.ParameterName))});");
 
             var ajaxCtx = new AjaxExecContext { Ajax = ajaxVariableName, HttpMethod = desc.MethodString, Options = optionsVariableName, Post = desc.PostParameter?.ParameterName ?? "null", Url = "url" };
             writer.Write("return " + _options.AjaxExecFn(ajaxCtx).TrimEnd(';'));
@@ -360,12 +364,14 @@ namespace TypeGap
             writer.WriteLine("}");
         }
 
-        protected virtual ApiParamDesc[] ValidateParameters(List<ApiParamDesc> parameters, string httpMethod, string routeTemplate, out ApiParamDesc postParam)
+        protected virtual ApiParamDesc[] ValidateParameters(List<ApiParamDesc> parameters, ApiMethod httpMethod, string routeTemplate, out ApiParamDesc postParam, out ApiParamDesc modelParam)
         {
+            var canHavePost = new[] { ApiMethod.Patch, ApiMethod.Post, ApiMethod.Put }.Contains(httpMethod);
+
             var postPossibilities = parameters
                 .Where(p => !IsRouteParameter(p.ParameterName, routeTemplate))
                 .Where(p => p.Mode != ApiParameterMode.FromUri)
-                .Where(p => p.Mode == ApiParameterMode.FromBody || _converter.IsComplexType(p.ParameterType))
+                .Where(p => p.Mode == ApiParameterMode.FromBody || TypeConverter.IsComplexType(p.ParameterType))
                 .ToArray();
 
             if (postPossibilities.Length > 1)
@@ -373,10 +379,30 @@ namespace TypeGap
 
             var post = postPossibilities.FirstOrDefault();
 
-            if (httpMethod == "get" && post != null)
-                throw new InvalidOperationException($"Invalid action, get method can't take complex type in message body. (at {routeTemplate})");
+            if (!canHavePost && post != null)
+            {
+                // if there's only a single parameter in a get method, mvc will bind query parameters into it.
+                if (post.Mode != ApiParameterMode.FromBody && parameters.Count == 1 && !IsRouteParameter(post.ParameterName, routeTemplate))
+                {
+                    var m = GetMembersAsParams(post.ParameterType).Select(kvp => new ApiParamDesc
+                    {
+                        ParameterName = kvp.Key,
+                        ParameterType = kvp.Value,
+                        IsOptional = true,
+                        Mode = ApiParameterMode.FromUri,
+                    }).ToList();
+
+                    var inner = ValidateParameters(m, httpMethod, routeTemplate, out postParam, out modelParam);
+                    modelParam = post;
+                    postParam = null;
+                    return inner;
+                }
+
+                throw new InvalidOperationException($"Invalid action, unable to map complex parameter '{post.ParameterName}' to {httpMethod} request as a message body is not allowed. (at {routeTemplate})");
+            }
 
             postParam = post;
+            modelParam = null;
             return parameters.Except(new[] { post }).ToArray();
         }
 
@@ -394,13 +420,22 @@ namespace TypeGap
             return Regex.IsMatch(template, @"\{\*?" + name, RegexOptions.IgnoreCase);
         }
 
-        protected virtual string BuildUrlString(ApiActionDesc action, string template, ApiParamDesc[] getParameters)
+        protected virtual string BuildUrlString(ApiActionDesc action, string template, ApiParamDesc[] getParameters, ApiParamDesc modelParameter)
         {
             List<string> routeJs = new List<string>();
             List<string> queryJs = new List<string>();
             List<ApiParamDesc> routeParameters = new List<ApiParamDesc>();
 
             bool seenOptionalRoute = false;
+
+            string GetParamExecString(ApiParamDesc p)
+            {
+                var name = modelParameter == null ? p.ParameterName : $"{modelParameter.ParameterName}.{p.ParameterName}";
+                var imm = CreateTypeInitializerMethod(p.ParameterType);
+                if (imm != null)
+                    return $"this.from_{imm}({name})";
+                return name;
+            }
 
             var parts = template.Split('/');
             for (int i = 0; i < parts.Length; i++)
@@ -439,8 +474,10 @@ namespace TypeGap
 
                 if (templateOptional != get.IsOptional)
                 {
-                    throw new Exception($"In action '{action.ActionName}', route parameter `{part}` is marked optional={get.IsOptional}, but the route " +
-                                        $"template '{template}' is marked optional={templateOptional}");
+                    bool canBeNull = !get.ParameterType.GetDnxCompatible().IsValueType || (Nullable.GetUnderlyingType(get.ParameterType) != null);
+                    if (!canBeNull)
+                        throw new Exception($"In action '{action.ActionName}', route parameter `{part}` is marked optional={get.IsOptional}, but the route " +
+                                            $"template '{template}' is marked optional={templateOptional} and the type is non-nullable so is required.");
                 }
 
                 var typeCode = Type.GetTypeCode(get.ParameterType);
@@ -453,15 +490,24 @@ namespace TypeGap
                 }
 
                 routeParameters.Add(get);
-                routeJs.Add($"[{get.ParameterName}, \"{get.ParameterName}\"]");
+                routeJs.Add($"[{GetParamExecString(get)}, \"{get.ParameterName}\"]");
             }
 
             foreach (var q in getParameters.Except(routeParameters))
             {
-                queryJs.Add($"[{q.ParameterName}, \"{q.ParameterName}\", {q.IsOptional.ToString().ToLower()}]");
+                queryJs.Add($"[{GetParamExecString(q)}, \"{q.ParameterName}\", {q.IsOptional.ToString().ToLower()}]");
             }
 
             return $"_build_url(this._basePath, [{String.Join(", ", routeJs)}], [{String.Join(", ", queryJs)}])";
+        }
+
+        protected virtual Dictionary<string, Type> GetMembersAsParams(Type t)
+        {
+            var rpro = t.GetDnxCompatible()
+                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                 .ToDictionary(k => k.Name, k => k.PropertyType)
+                 .Concat(t.GetDnxCompatible().GetFields(BindingFlags.Instance | BindingFlags.Public).ToDictionary(k => k.Name, k => k.FieldType));
+            return rpro.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         protected virtual string CreateTypeInitializerMethod(Type t)
@@ -510,11 +556,6 @@ namespace TypeGap
             string GenInitBody(string prefix, bool clone)
             {
                 StringBuilder inner = new StringBuilder();
-                var rpro = t.GetDnxCompatible()
-                    .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                    .ToDictionary(k => k.Name, k => k.PropertyType)
-                    .Concat(t.GetDnxCompatible().GetFields(BindingFlags.Instance | BindingFlags.Public).ToDictionary(k => k.Name, k => k.FieldType));
-
                 int count = 0;
 
                 if (clone)
@@ -522,7 +563,7 @@ namespace TypeGap
                     inner.AppendLine("const cloned: any = { };");
                 }
 
-                foreach (var prop in rpro)
+                foreach (var prop in GetMembersAsParams(t))
                 {
                     var pmm = CreateTypeInitializerMethod(prop.Value);
                     if (pmm != null)
@@ -633,6 +674,7 @@ namespace TypeGap
         {
             public ApiActionDesc Action { get; set; }
             public ApiParamDesc PostParameter { get; set; }
+            public ApiParamDesc ModelParameter { get; set; }
             public ApiParamDesc[] GetParameters { get; set; }
             public string PathString { get; set; }
             public string ParamString { get; set; }

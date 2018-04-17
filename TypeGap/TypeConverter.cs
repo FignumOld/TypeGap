@@ -49,7 +49,7 @@ namespace TypeGap
             _fluent = fluent;
         }
 
-        public bool IsComplexType(Type clrType)
+        public static bool IsComplexType(Type clrType)
         {
             return !_cache.ContainsKey(clrType);
         }
