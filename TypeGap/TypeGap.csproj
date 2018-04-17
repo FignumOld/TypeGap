@@ -11,10 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Resources\AjaxHelpers.ts" />
     <None Remove="Resources\GeneratedNotice.ts" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\AjaxHelpers.ts" />
     <EmbeddedResource Include="Resources\GeneratedNotice.ts" />
   </ItemGroup>
 

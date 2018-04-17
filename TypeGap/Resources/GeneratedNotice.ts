@@ -1,4 +1,6 @@
 ﻿/* tslint:disable */
+/* eslint-disable */
+// jshint ignore: start
 //////////////////////////////////////////////////////////////////
 ////                                                          ////
 ////              THIS FILE IS AUTO GENERATED                 ////

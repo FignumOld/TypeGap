@@ -93,7 +93,6 @@ namespace TypeGap
 
     public class GapApiGeneratorOptions
     {
-        public Func<string, string> UrlRewriter { get; set; } = (v) => v;
         public Func<string, string> FunctionNameRewriter { get; set; } = (v) => v.Substring(0, 1).ToLower() + v.Substring(1);
         public string PromiseType { get; set; } = "Promise";
         public string EssentialsImportPath { get; set; } = "./Ajax";
@@ -118,6 +117,9 @@ namespace TypeGap
         private readonly string ajaxVariableName = "_ajax";
         private readonly string optionsVariableName = "ajaxOptions";
 
+        protected Dictionary<Type, string> keyLookup = new Dictionary<Type, string>();
+        protected Dictionary<string, string> bodyLookup = new Dictionary<string, string>();
+
         public GapApiGenerator(TypeConverter converter, string indent, GapApiGeneratorOptions options)
         {
             _converter = converter;
@@ -140,6 +142,8 @@ namespace TypeGap
                 writer.WriteLine("// === END CUSTOM HEADER CODE ===");
             }
 
+            writer.WriteLine();
+            writer.WriteLine(Resx.AjaxHelpers);
             writer.WriteLine();
 
             WriteStaticHelper(controllerNames, writer);
@@ -186,6 +190,8 @@ namespace TypeGap
             string template = controller.RouteTemplate;
             template = Regex.Replace(template, @"(?:\[controller\]|\{controller\})", controller.ControllerName, RegexOptions.IgnoreCase);
 
+            var actions = controller.Actions.Select(a => ParseAction(template, a)).ToArray();
+
             var baseClass = String.IsNullOrWhiteSpace(_options.ControllerBaseClass) ? "" : $" extends {_options.ControllerBaseClass}";
 
             var controllerName = $"{controller.ControllerName}Service";
@@ -196,11 +202,11 @@ namespace TypeGap
             writer.WriteLine($"protected {ajaxVariableName}: {_options.AjaxClassName};");
 
             writer.WriteLine();
-            writer.WriteLine($"public static Endpoints = {{");
-            foreach (var action in controller.Actions)
+            writer.WriteLine($"public endpoints = {{");
+            foreach (var a in actions)
             {
                 writer.Indent++;
-                WriteEndpoint(writer, ParseAction(template, action));
+                WriteEndpoint(a, writer);
                 writer.Indent--;
             }
             writer.WriteLine($"}}");
@@ -215,13 +221,15 @@ namespace TypeGap
             writer.WriteLine("basePath = (basePath || \"\");");
             writer.WriteLine("this._basePath = (basePath.substr(-1) == \"/\") ? basePath.substr(0, basePath.length - 1) : basePath;");
             writer.WriteLine($"this.{ajaxVariableName} = new {_options.AjaxClassName}({optionsVariableName});");
+            foreach (var a in actions)
+                writer.WriteLine($"this.{a.NameString} = this.{a.NameString}.bind(this);");
             writer.Indent--;
             writer.WriteLine("}");
 
-            foreach (var action in controller.Actions)
+            foreach (var a in actions)
             {
                 writer.WriteLine();
-                WriteMethod(controllerName, action, writer, ParseAction(template, action));
+                WriteMethod(a, writer);
             }
 
             if (bodyLookup.Values.Any())
@@ -238,11 +246,11 @@ namespace TypeGap
                     writer.WriteLine(helper);
                 }
 
-                writer.WriteLine($"private {checkRealFn}({initVariableName}: any): boolean {{");
-                writer.Indent++;
-                writer.WriteLine($"return {initVariableName} !== \"\" && {initVariableName} !== undefined && {initVariableName} !== null && !(Array.isArray({initVariableName}) && {initVariableName}.length === 0);");
-                writer.Indent--;
-                writer.WriteLine("}");
+                //writer.WriteLine($"private {checkRealFn} = ({initVariableName}: any): boolean => {{");
+                //writer.Indent++;
+                //writer.WriteLine($"return {initVariableName} !== \"\" && {initVariableName} !== undefined && {initVariableName} !== null && !(Array.isArray({initVariableName}) && {initVariableName}.length === 0);");
+                //writer.Indent--;
+                //writer.WriteLine("}");
             }
 
             // we need to regen lookups for each controller that needs it
@@ -251,17 +259,6 @@ namespace TypeGap
 
             writer.Indent--;
             writer.WriteLine("}");
-        }
-
-        protected class ParsedApiDesc
-        {
-            public ApiParamDesc PostParameter { get; set; }
-            public ApiParamDesc[] GetParameters { get; set; }
-            public string PathString { get; set; }
-            public string ParamString { get; set; }
-            public string EndpointParamString { get; set; }
-            public string MethodString { get; set; }
-            public string NameString { get; set; }
         }
 
         protected virtual ParsedApiDesc ParseAction(string template, ApiActionDesc action)
@@ -293,22 +290,23 @@ namespace TypeGap
                 PostParameter = postParameter,
                 GetParameters = getParameters,
                 NameString = _options.FunctionNameRewriter(action.ActionName),
+                Action = action,
             };
         }
 
-        protected virtual void WriteEndpoint(CustomIndentedTextWriter writer, ParsedApiDesc desc)
+        protected virtual void WriteEndpoint(ParsedApiDesc desc, CustomIndentedTextWriter writer)
         {
             var line = $"{desc.NameString}: ({desc.EndpointParamString}): string => {desc.PathString},";
             writer.WriteLine(line.Replace(" + \"\",", ","));
         }
 
-        protected virtual void WriteMethod(string controllerName, ApiActionDesc action, CustomIndentedTextWriter writer, ParsedApiDesc desc)
+        protected virtual void WriteMethod(ParsedApiDesc desc, CustomIndentedTextWriter writer)
         {
             string returnString;
-            if (action.ReturnType == null)
+            if (desc.Action.ReturnType == null)
                 returnString = "any";
             else
-                returnString = _converter.GetTypeScriptName(action.ReturnType);
+                returnString = _converter.GetTypeScriptName(desc.Action.ReturnType);
 
             var paramString = desc.ParamString;
 
@@ -340,19 +338,19 @@ namespace TypeGap
                 }
                 else
                 {
-                    writer.WriteLine($"if (this.{checkRealFn}(_files))");
+                    writer.WriteLine($"if ({checkRealFn}(_files))");
                     writer.Indent++;
                     writer.WriteLine($"for (const _f of _files) {{ {desc.PostParameter.ParameterName}.append(\"files[]\", _f); }}");
                     writer.Indent--;
                 }
             }
 
-            writer.WriteLine($"var url = this._basePath + {controllerName}.Endpoints.{desc.NameString}({String.Join(", ", desc.GetParameters.Select(p => p.ParameterName))});");
+            writer.WriteLine($"var url = this.endpoints.{desc.NameString}({String.Join(", ", desc.GetParameters.Select(p => p.ParameterName))});");
 
             var ajaxCtx = new AjaxExecContext { Ajax = ajaxVariableName, HttpMethod = desc.MethodString, Options = optionsVariableName, Post = desc.PostParameter?.ParameterName ?? "null", Url = "url" };
             writer.Write("return " + _options.AjaxExecFn(ajaxCtx).TrimEnd(';'));
 
-            var initializer = this.CreateTypeInitializerMethod(action.ReturnType);
+            var initializer = this.CreateTypeInitializerMethod(desc.Action.ReturnType);
             if (String.IsNullOrWhiteSpace(initializer))
                 writer.WriteLine(";");
             else
@@ -398,9 +396,11 @@ namespace TypeGap
 
         protected virtual string BuildUrlString(ApiActionDesc action, string template, ApiParamDesc[] getParameters)
         {
-            List<string> routeParameters = new List<string>();
-            StringBuilder url = new StringBuilder();
-            bool writtenOptionalRoute = false;
+            List<string> routeJs = new List<string>();
+            List<string> queryJs = new List<string>();
+            List<ApiParamDesc> routeParameters = new List<ApiParamDesc>();
+
+            bool seenOptionalRoute = false;
 
             var parts = template.Split('/');
             for (int i = 0; i < parts.Length; i++)
@@ -408,7 +408,7 @@ namespace TypeGap
                 var part = parts[i];
                 if (!part.StartsWith("{"))
                 {
-                    url.Append("/" + part);
+                    routeJs.Add("\"" + part + "\"");
                     continue;
                 }
 
@@ -421,34 +421,26 @@ namespace TypeGap
                 if (part.StartsWith("*"))
                     part = part.Substring(1);
 
-                if (part.EndsWith("?"))
-                    writtenOptionalRoute = true;
-                else if (writtenOptionalRoute == true)
+                var templateOptional = part.EndsWith("?");
+                part = part.TrimEnd('?');
+
+                if (templateOptional)
+                    seenOptionalRoute = true;
+                else if (seenOptionalRoute == true)
                     throw new Exception($"In action '{action.ActionName}', required route parameter must not come after an optional route parameter in template: '{template}'.");
 
-                routeParameters.Add(part);
-
-                url.Append($"/\" + encodeURIComponent({part.TrimEnd('?')} as any) + \"");
-            }
-
-            foreach (var rtemplate in routeParameters)
-            {
-                var r = rtemplate;
-                var templateMarkedOptional = r.EndsWith("?");
-                r = r.TrimEnd('?');
-
-                var get = getParameters.FirstOrDefault(g => g.ParameterName.Equals(r));
+                var get = getParameters.FirstOrDefault(g => g.ParameterName.Equals(part));
                 if (get == null)
                 {
-                    throw new Exception($"In action '{action.ActionName}', route parameter `{r}` does not match any available method parameters. " +
+                    throw new Exception($"In action '{action.ActionName}', route parameter `{part}` does not match any available method parameters. " +
                                         $"Please check your route template: '{template}'." +
                                         $"Parameters: [{String.Join(", ", action.Parameters.Select(s => s.ParameterName))}]");
                 }
 
-                if (templateMarkedOptional != get.IsOptional)
+                if (templateOptional != get.IsOptional)
                 {
-                    throw new Exception($"In action '{action.ActionName}', route parameter `{r}` is marked optional={get.IsOptional}, but the route " +
-                                        $"template '{template}' is marked optional={templateMarkedOptional}");
+                    throw new Exception($"In action '{action.ActionName}', route parameter `{part}` is marked optional={get.IsOptional}, but the route " +
+                                        $"template '{template}' is marked optional={templateOptional}");
                 }
 
                 var typeCode = Type.GetTypeCode(get.ParameterType);
@@ -459,20 +451,18 @@ namespace TypeGap
                         throw new Exception($"In action '{action.ActionName}' parameter type '{get.ParameterType.Name}' is not suitable " +
                                             $"as a route parameter for template '{template}'. (Type code: {typeCode})");
                 }
+
+                routeParameters.Add(get);
+                routeJs.Add($"[{get.ParameterName}, \"{get.ParameterName}\"]");
             }
 
-            var finalGetParameters = getParameters.Where(p => routeParameters.All(r => !r.TrimEnd('?').Equals(p.ParameterName, StringComparison.OrdinalIgnoreCase)));
-            if (finalGetParameters.Any())
+            foreach (var q in getParameters.Except(routeParameters))
             {
-                url.Append("?");
-                url.Append(String.Join("&", finalGetParameters.Select(p => $"{p.ParameterName}=\" + encodeURIComponent({p.ParameterName} as any) + \"")));
+                queryJs.Add($"[{q.ParameterName}, \"{q.ParameterName}\", {q.IsOptional.ToString().ToLower()}]");
             }
 
-            return "\"" + _options.UrlRewriter("/" + url.ToString().TrimStart('/')) + "\"";
+            return $"_build_url(this._basePath, [{String.Join(", ", routeJs)}], [{String.Join(", ", queryJs)}])";
         }
-
-        protected Dictionary<Type, string> keyLookup = new Dictionary<Type, string>();
-        protected Dictionary<string, string> bodyLookup = new Dictionary<string, string>();
 
         protected virtual string CreateTypeInitializerMethod(Type t)
         {
@@ -510,7 +500,7 @@ namespace TypeGap
                 StringBuilder inner = new StringBuilder();
                 inner.AppendLine($"private {prefix}_{guid} = ({initVariableName}: any): any => {{");
                 inner.AppendLine($"{initIndent}// {tsName} - ({clrName})");
-                inner.AppendLine($"{initIndent}if (!this.{checkRealFn}({initVariableName})) return {initVariableName};");
+                inner.AppendLine($"{initIndent}if (!{checkRealFn}({initVariableName})) return {initVariableName};");
                 inner.AppendLine($"{initIndent}" + body.Replace("\n", "\n" + initIndent));
                 //inner.AppendLine($"{initIndent}return {initVariableName};");
                 inner.AppendLine($"}}");
@@ -637,6 +627,18 @@ namespace TypeGap
             bodyLookup[guid] = result;
 
             return guid;
+        }
+
+        protected class ParsedApiDesc
+        {
+            public ApiActionDesc Action { get; set; }
+            public ApiParamDesc PostParameter { get; set; }
+            public ApiParamDesc[] GetParameters { get; set; }
+            public string PathString { get; set; }
+            public string ParamString { get; set; }
+            public string EndpointParamString { get; set; }
+            public string MethodString { get; set; }
+            public string NameString { get; set; }
         }
     }
 }

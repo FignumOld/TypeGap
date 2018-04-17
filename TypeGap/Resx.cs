@@ -12,6 +12,7 @@ namespace TypeGap
     internal class Resx
     {
         public static string AjaxService => GetResource("AjaxService.ts");
+        public static string AjaxHelpers => GetResource("AjaxHelpers.ts");
 
         public static string GeneratedNotice => GetResource("GeneratedNotice.ts");
 
