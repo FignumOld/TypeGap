@@ -76,13 +76,16 @@ namespace TypeGap
             return api;
         }
 
-        public TypeFluidOutput Build(GapApiGeneratorOptions options = null)
+        public string Build(GapApiGeneratorOptions options = null)
         {
             var services = new StringWriter();
             var servicesWriter = new CustomIndentedTextWriter(services, _indent);
 
             var enums = new StringWriter();
             var enumsWriter = new CustomIndentedTextWriter(enums, _indent);
+
+            var globals = new StringWriter();
+            var globalsWriter = new CustomIndentedTextWriter(globals, _indent);
 
             var definitions = new StringWriter();
             var definitionsWriter = new CustomIndentedTextWriter(definitions, _indent);
@@ -98,28 +101,26 @@ namespace TypeGap
             if (!string.IsNullOrEmpty(_namespace))
                 fluent.WithModuleNameFormatter(m => _namespace);
 
-            var signalr = new SignalRGenerator();
-            signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
-
             ProcessTypes(_general, fluent);
             fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
 
             var apiGen = new GapApiGenerator(converter, _indent, options ?? new GapApiGeneratorOptions());
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
 
+            var signalr = new SignalRGenerator();
+            signalr.WriteHubs(_hubs.ToArray(), converter, servicesWriter);
+
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
             definitionsWriter.Write(tsClassDefinitions);
 
-            _enumGenerator.WriteEnums(enumsWriter, definitionsWriter, fluent.ModelBuilder.Build().Enums, converter);
+            _enumGenerator.WriteEnums(enumsWriter, globalsWriter, definitionsWriter, fluent.ModelBuilder.Build().Enums, converter);
 
             string prepended = _generateNotice ? Resx.GeneratedNotice + "\r\n\r\n" : "";
-
-            return new TypeFluidOutput
-            {
-                DefinitionTS = prepended + definitions.GetStringBuilder(),
-                EnumsTS = prepended + enums.GetStringBuilder(),
-                ServicesTS = prepended + services.GetStringBuilder(),
-            };
+            prepended +=
+                "declare global {" +
+                (definitions.GetStringBuilder().ToString() + enums.GetStringBuilder()).Replace("declare namespace", "namespace").Replace("\n", "\n    ").TrimEnd() + Environment.NewLine +
+                "}" + Environment.NewLine + globals.GetStringBuilder() + Environment.NewLine + services.GetStringBuilder();
+            return prepended;
         }
 
         public TypeFluent WithGlobalNamespace(string @namespace)
@@ -152,22 +153,9 @@ namespace TypeGap
             return this;
         }
 
-        public void Build(string definitionPath, string servicesPath, string enumsPath, GapApiGeneratorOptions options = null)
+        public void Build(string outputPath, GapApiGeneratorOptions options = null)
         {
-            var output = Build(options);
-            WriteFile(definitionPath, output.DefinitionTS);
-            WriteFile(servicesPath, output.ServicesTS);
-            WriteFile(enumsPath, output.EnumsTS);
-        }
-
-        public void Build(string basePath, string definitionName, string servicesName, string enumsName, GapApiGeneratorOptions options = null)
-        {
-            Build(Path.Combine(basePath, definitionName), Path.Combine(basePath, servicesName), Path.Combine(basePath, enumsName), options);
-        }
-
-        public void Build(string outputDirectory, GapApiGeneratorOptions options = null)
-        {
-            Build(outputDirectory, "definitions.d.ts", "services.ts", "enums.ts", options);
+            WriteFile(outputPath, Build(options));
         }
 
         private static void ProcessTypes(IEnumerable<Type> types, TypeScriptFluent generator)
