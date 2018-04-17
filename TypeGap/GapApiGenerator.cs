@@ -507,7 +507,7 @@ namespace TypeGap
                     return null;
 
                 StringBuilder inner = new StringBuilder();
-                inner.AppendLine($"private {prefix}_{guid}({initVariableName}: any): any {{");
+                inner.AppendLine($"private {prefix}_{guid} = ({initVariableName}: any): any => {{");
                 inner.AppendLine($"{initIndent}// {tsName} - ({clrName})");
                 inner.AppendLine($"{initIndent}if (!this.{checkRealFn}({initVariableName})) return {initVariableName};");
                 inner.AppendLine($"{initIndent}" + body.Replace("\n", "\n" + initIndent));
