@@ -102,6 +102,7 @@ namespace TypeGap
         public string AjaxClassName { get; set; } = "Ajax";
         public string ControllerBaseClass { get; set; }
         public bool HideActionsWithNoReturn { get; set; } = true;
+        public bool EnableDeepParameterCloning { get; set; } = true;
         public string OptionsClassName { get; set; } = "IExtendedAjaxSettings";
         public Func<AjaxExecContext, string> AjaxExecFn { get; set; } = (c) => $"this.{c.Ajax}.{c.HttpMethod}({c.Url}, {c.Post}, {c.Options})";
         public List<GapInitializer> TypeInitializers { get; set; } = new List<GapInitializer>();
@@ -511,12 +512,12 @@ namespace TypeGap
                 inner.AppendLine($"{initIndent}// {tsName} - ({clrName})");
                 inner.AppendLine($"{initIndent}if (!this.{checkRealFn}({initVariableName})) return {initVariableName};");
                 inner.AppendLine($"{initIndent}" + body.Replace("\n", "\n" + initIndent));
-                inner.AppendLine($"{initIndent}return {initVariableName};");
+                //inner.AppendLine($"{initIndent}return {initVariableName};");
                 inner.AppendLine($"}}");
                 return inner.ToString().Trim();
             }
 
-            string GenInitBody(string prefix)
+            string GenInitBody(string prefix, bool clone)
             {
                 StringBuilder inner = new StringBuilder();
                 var rpro = t.GetDnxCompatible()
@@ -524,15 +525,35 @@ namespace TypeGap
                     .ToDictionary(k => k.Name, k => k.PropertyType)
                     .Concat(t.GetDnxCompatible().GetFields(BindingFlags.Instance | BindingFlags.Public).ToDictionary(k => k.Name, k => k.FieldType));
 
+                int count = 0;
+
+                if (clone)
+                {
+                    inner.AppendLine("const cloned: any = { };");
+                }
+
                 foreach (var prop in rpro)
                 {
                     var pmm = CreateTypeInitializerMethod(prop.Value);
                     if (pmm != null)
                     {
-                        //inner.AppendLine($"if (this.{checkRealFn}({initVariableName}))");
-                        inner.AppendLine($"{initVariableName}.{prop.Key} = this.{prefix}_{pmm}({initVariableName}.{prop.Key});");
+                        count++;
+                        if (clone)
+                            inner.AppendLine($"cloned.{prop.Key} = this.{prefix}_{pmm}({initVariableName}.{prop.Key});");
+                        else
+                            inner.AppendLine($"{initVariableName}.{prop.Key} = this.{prefix}_{pmm}({initVariableName}.{prop.Key});");
+                    }
+                    else if (clone)
+                    {
+                        inner.AppendLine($"cloned.{prop.Key} = {initVariableName}.{prop.Key};");
                     }
                 }
+
+                if (count == 0)
+                    return null;
+
+                inner.AppendLine("return " + (clone ? "cloned;" : initVariableName + ";"));
+
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
 
@@ -562,15 +583,27 @@ namespace TypeGap
                     return null;
 
                 StringBuilder inner = new StringBuilder();
-                inner.AppendLine($"for (let key in {initVariableName})");
-                inner.AppendLine($"{initIndent}{initVariableName}[key] = this.{prefix}_{pmm}({initVariableName}[key]);");
+
+                if (t.IsIDictionary())
+                {
+                    inner.AppendLine("const cloned: any = { };");
+                    inner.AppendLine($"for (let key in {initVariableName})");
+                }
+                else
+                {
+                    inner.AppendLine("const cloned: any[] = [];");
+                    inner.AppendLine($"for (let key: number = 0; key < {initVariableName}.length; key++)");
+                }
+
+                inner.AppendLine($"{initIndent}cloned[key] = this.{prefix}_{pmm}({initVariableName}[key]);");
+                inner.AppendLine("return cloned;");
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
 
             string GenBasic(string prefix, string v)
             {
                 StringBuilder inner = new StringBuilder();
-                inner.AppendLine($"{initVariableName} = {v};");
+                inner.AppendLine($"return {v};");
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
 
@@ -588,9 +621,9 @@ namespace TypeGap
             }
             else
             {
-                sb.AppendLine(GenInitBody("from"));
+                sb.AppendLine(GenInitBody("from", _options.EnableDeepParameterCloning));
                 sb.AppendLine();
-                sb.AppendLine(GenInitBody("to"));
+                sb.AppendLine(GenInitBody("to", false));
             }
 
             var result = sb.ToString();
