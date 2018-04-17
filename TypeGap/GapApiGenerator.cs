@@ -490,6 +490,9 @@ namespace TypeGap
 
             string GenInitMethod(string prefix, string body)
             {
+                if (String.IsNullOrWhiteSpace(body))
+                    return null;
+
                 StringBuilder inner = new StringBuilder();
                 inner.AppendLine($"private {prefix}_{guid}({initVariableName}: any): any {{");
                 inner.AppendLine($"{initIndent}// {tsName} - ({clrName})");
@@ -547,7 +550,6 @@ namespace TypeGap
 
                 StringBuilder inner = new StringBuilder();
                 inner.AppendLine($"for (let key in {initVariableName})");
-                //inner.AppendLine($"{initIndent}if (this.{checkRealFn}({initVariableName}[i]))");
                 inner.AppendLine($"{initIndent}{initVariableName}[key] = this.{prefix}_{pmm}({initVariableName}[key]);");
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
@@ -555,7 +557,6 @@ namespace TypeGap
             string GenBasic(string prefix, string v)
             {
                 StringBuilder inner = new StringBuilder();
-                //inner.AppendLine($"if (this.{checkRealFn}({initVariableName}))");
                 inner.AppendLine($"{initVariableName} = {v};");
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
