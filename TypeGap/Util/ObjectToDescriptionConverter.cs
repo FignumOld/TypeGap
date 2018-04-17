@@ -7,7 +7,7 @@ using TypeGap.Extensions;
 
 namespace TypeGap.Util
 {
-    internal class ObjectToDescriptionConverter
+    public class ObjectToDescriptionConverter
     {
         public static ApiControllerDesc Convert(Type type)
         {
@@ -20,6 +20,10 @@ namespace TypeGap.Util
             var routeAttr = GetAttributes(type.GetDnxCompatible(), "Route").FirstOrDefault();
             if (routeAttr != null)
                 dec.RouteTemplate = TryGetBestPrivateMember(routeAttr, "Template").ToString();
+
+            //var prefixAttr = GetAttributes(type.GetDnxCompatible(), "RoutePrefix").FirstOrDefault();
+            //if (prefixAttr != null)
+            //    dec.RouteTemplate = TryGetBestPrivateMember(prefixAttr, "Prefix").ToString();
 
             var methods = typeInfo.GetMethods()
                .Where(m => m.IsPublic)
@@ -93,7 +97,8 @@ namespace TypeGap.Util
                     else if (GetAttributes(pmInfo, "FromBody").Length > 0)
                         p.Mode = ApiParameterMode.FromBody;
 
-                    action.Parameters.Add(p);
+                    if (GetAttributes(pmInfo, "FromServices").Length == 0)
+                        action.Parameters.Add(p);
                 }
             }
 

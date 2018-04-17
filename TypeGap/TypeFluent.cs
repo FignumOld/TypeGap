@@ -117,9 +117,10 @@ namespace TypeGap
 
             string prepended = _generateNotice ? Resx.GeneratedNotice + "\r\n\r\n" : "";
             prepended +=
+                services.GetStringBuilder() + Environment.NewLine +
                 "declare global {" +
                 (definitions.GetStringBuilder().ToString() + enums.GetStringBuilder()).Replace("declare namespace", "namespace").Replace("\n", "\n    ").TrimEnd() + Environment.NewLine +
-                "}" + Environment.NewLine + globals.GetStringBuilder() + Environment.NewLine + services.GetStringBuilder();
+                "}" + Environment.NewLine + globals.GetStringBuilder();
             return prepended;
         }
 
