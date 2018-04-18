@@ -216,6 +216,11 @@ namespace TypeGap
         {
             var actions = controller.Actions.Select(a => ParseAction(controller, a)).ToArray();
 
+            var duplicateRoute = actions.GroupBy(a => a.Action.Method + a.Template).FirstOrDefault(g => g.Count() > 1);
+            if (duplicateRoute != null)
+                throw new Exception($"Two actions ('{duplicateRoute.First().Action.ActionName}', '{duplicateRoute.Skip(1).First().Action.ActionName}') " +
+                    $"in controller '{controller.ControllerName}' share the same route '{duplicateRoute.First().Template}' and method '{duplicateRoute.First().Action.Method}'.");
+
             var baseClass = String.IsNullOrWhiteSpace(_options.ControllerBaseClass) ? "" : $" extends {_options.ControllerBaseClass}";
 
             var controllerName = $"{controller.ControllerName}Service";
@@ -301,6 +306,7 @@ namespace TypeGap
                 GetParameters = getParameters,
                 NameString = _options.FnActionName(action),
                 Action = action,
+                Template = template,
             };
         }
 
@@ -684,6 +690,7 @@ namespace TypeGap
             public ApiParamDesc PostParameter { get; set; }
             public ApiParamDesc ModelParameter { get; set; }
             public ApiParamDesc[] GetParameters { get; set; }
+            public string Template { get; set; }
             public string PathString { get; set; }
             public string ParamString { get; set; }
             public string EndpointParamString { get; set; }
