@@ -135,12 +135,11 @@ namespace TypeGap
 
             if (clrType.GetDnxCompatible().IsClass || clrType.GetDnxCompatible().IsInterface)
             {
+                _fluent.ModelBuilder.Add(clrType);
+
                 var name = GetFullName(clrType);
                 if (clrType.GetDnxCompatible().IsGenericType)
                 {
-                    var indexOfBacktick = name.IndexOf('`');
-                    if (indexOfBacktick > 0) name = name.Remove(indexOfBacktick);
-
                     name += "<";
                     var count = 0;
                     foreach (var genericArgument in clrType.GetDnxCompatible().GetGenericArguments())
@@ -150,7 +149,6 @@ namespace TypeGap
                     }
                     name += ">";
                 }
-                _fluent.ModelBuilder.Add(clrType);
                 return name;
             }
 
