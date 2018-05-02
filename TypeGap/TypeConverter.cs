@@ -138,7 +138,10 @@ namespace TypeGap
                 var name = GetFullName(clrType);
                 if (clrType.GetDnxCompatible().IsGenericType)
                 {
-                    name = GetFullName(clrType).Remove(GetFullName(clrType).IndexOf('`')) + "<";
+                    var indexOfBacktick = name.IndexOf('`');
+                    if (indexOfBacktick > 0) name = name.Remove(indexOfBacktick);
+
+                    name += "<";
                     var count = 0;
                     foreach (var genericArgument in clrType.GetDnxCompatible().GetGenericArguments())
                     {
