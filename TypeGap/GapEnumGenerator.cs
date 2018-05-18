@@ -82,7 +82,7 @@ namespace TypeGap
         public abstract void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup enumObj, out string globalTypeName);
     }
 
-    public class NonConstEnumInitializer : GapInitializer
+    public class NonConstEnumInitializer : BasicTypeInitializer
     {
         public override bool CanConvertType(Type t)
         {

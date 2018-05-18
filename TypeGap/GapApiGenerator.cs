@@ -115,7 +115,7 @@ namespace TypeGap
         public string DefaultRouteTemplate { get; set; } = "[controller]/[action]";
         public bool EnableDeepParameterCloning { get; set; } = true;
         public string OptionsClassName { get; set; } = "IExtendedAjaxSettings";
-        public List<GapInitializer> TypeInitializers { get; set; } = new List<GapInitializer>();
+        public List<AdvancedTypeInitializer> TypeInitializers { get; set; } = new List<AdvancedTypeInitializer>();
     }
 
     public class GapApiGenerator
@@ -128,7 +128,6 @@ namespace TypeGap
         private readonly string ajaxVariableName = "_ajax";
         private readonly string optionsVariableName = "ajaxOptions";
 
-        protected Dictionary<Type, string> keyLookup = new Dictionary<Type, string>();
         protected Dictionary<string, string> bodyLookup = new Dictionary<string, string>();
 
         public GapApiGenerator(TypeConverter converter, string indent, GapApiGeneratorOptions options)
@@ -535,17 +534,19 @@ namespace TypeGap
             if (tsName.StartsWith("any")) // we won't be able to process any types that we don't understand.
                 return null;
 
-            var it = _options.TypeInitializers.SingleOrDefault(g => g.CanConvertType(t));
-            if (it != null && keyLookup.ContainsKey(it.GetType()))
-                return keyLookup[it.GetType()];
+            var itList = _options.TypeInitializers.Where(g => g.GetGroupNameIfCanConvert(t) != null).ToArray();
+            if (itList.Length > 1)
+                throw new Exception($"Type '{t.FullName}' is currently handled by more than one type initializer. This is not supported. (current initializers: {String.Join(", ", itList.Select(i => i.GetType().Name))})");
 
-            if (keyLookup.ContainsKey(t))
-                return keyLookup[t];
+            var it = itList.FirstOrDefault();
+            var guid = it?.GetGroupNameIfCanConvert(t);
 
-            //var guid = Guid.NewGuid().ToString().ToLower().Replace("-", "");
-            string guid;
-            using (MD5 md5 = MD5.Create())
-                guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(t.AssemblyQualifiedName)).Select(b => b.ToString("x2")));
+            if (guid == null)
+                using (MD5 md5 = MD5.Create())
+                    guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(t.AssemblyQualifiedName)).Select(b => b.ToString("x2")));
+
+            if (it != null && bodyLookup.ContainsKey(guid))
+                return guid;
 
             StringBuilder sb = new StringBuilder();
 
@@ -648,15 +649,15 @@ namespace TypeGap
             string GenBasic(string prefix, string v)
             {
                 StringBuilder inner = new StringBuilder();
-                inner.AppendLine($"return {v};");
+                inner.AppendLine(v);
                 return GenInitMethod(prefix, inner.ToString().Trim());
             }
 
             if (it != null)
             {
-                sb.AppendLine(GenBasic("from", it.FromTsType(initVariableName)));
+                sb.AppendLine(GenBasic("from", it.FromTsType(t, initVariableName)));
                 sb.AppendLine();
-                sb.AppendLine(GenBasic("to", it.ToTsType(initVariableName)));
+                sb.AppendLine(GenBasic("to", it.ToTsType(t, initVariableName)));
             }
             else if (typeof(IEnumerable).GetDnxCompatible().IsAssignableFrom(t))
             {
@@ -675,12 +676,7 @@ namespace TypeGap
             if (String.IsNullOrWhiteSpace(result))
                 return null;
 
-            if (it != null)
-                keyLookup[it.GetType()] = guid;
-
-            keyLookup[t] = guid;
             bodyLookup[guid] = result;
-
             return guid;
         }
 
