@@ -525,8 +525,7 @@ namespace TypeGap
 
         protected virtual string CreateTypeInitializerMethod(Type t)
         {
-            if (t.IsGenericTask())
-                t = t.GetUnderlyingTaskType();
+            t = _converter.UnwrapType(t);
 
             var tsName = _converter.GetTypeScriptName(t);
             var clrName = _converter.PrettyClrTypeName(t);

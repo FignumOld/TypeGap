@@ -65,10 +65,8 @@ namespace TypeGap
             return String.IsNullOrEmpty(_globalNamespace) ? (moduleName ?? clrType.FullName) : _globalNamespace + "." + clrType.Name;
         }
 
-        public string GetTypeScriptName(Type clrType)
+        public Type UnwrapType(Type clrType)
         {
-            string result;
-
             if (clrType.IsNullable())
             {
                 clrType = clrType.GetUnderlyingNullableType();
@@ -78,6 +76,15 @@ namespace TypeGap
             {
                 clrType = clrType.GetUnderlyingTaskType();
             }
+
+            return clrType;
+        }
+
+        public string GetTypeScriptName(Type clrType)
+        {
+            string result;
+
+            clrType = UnwrapType(clrType);
 
             if (_cache.TryGetValue(clrType, out result))
             {
