@@ -12,11 +12,9 @@
             return data;
         }
         if (Array.isArray(data)) {
-            const flattened = data.map(function (item, i) {
-                return _serialize_data(item, pname + "[" + i + "].")
-            });
-            data = flattened.join("&");
-            return data;
+            return data
+                .map((item, i) => _serialize_data(item, pname + "[" + i + "]."))
+                .join("&");
         }
         if (typeof data === "object") {
             return _serialize_data(data, pname + ".");
