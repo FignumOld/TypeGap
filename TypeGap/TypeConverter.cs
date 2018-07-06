@@ -62,7 +62,16 @@ namespace TypeGap
             if (tsMember != null)
                 moduleName = tsMember.Module.Name + "." + tsMember.Name;
 
-            return String.IsNullOrEmpty(_globalNamespace) ? (moduleName ?? clrType.FullName) : _globalNamespace + "." + clrType.Name;
+            var fullName = String.IsNullOrEmpty(_globalNamespace) ? (moduleName ?? clrType.FullName) : _globalNamespace + "." + clrType.Name;
+
+            // remove e.g. `1 from the names of generic types
+            var backTick = fullName.IndexOf('`');
+            if (backTick > 0)
+            {
+                fullName = fullName.Remove(backTick);
+            }
+
+            return fullName;
         }
 
         public Type UnwrapType(Type clrType)
