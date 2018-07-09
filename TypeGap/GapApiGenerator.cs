@@ -220,6 +220,13 @@ namespace TypeGap
                 throw new Exception($"Two actions ('{duplicateRoute.First().Action.ActionName}', '{duplicateRoute.Skip(1).First().Action.ActionName}') " +
                     $"in controller '{controller.ControllerName}' share the same route '{duplicateRoute.First().Template}' and method '{duplicateRoute.First().Action.Method}'.");
 
+            // actions with the same name but different methods should be renamed to avoid conflicts
+            var duplicateActionNames = actions.GroupBy(a => a.Action.ActionName).Where(g => g.Count() > 1).Select(g => g.Key);
+            foreach (var action in actions.Where(a => duplicateActionNames.Contains(a.Action.ActionName)))
+            {
+                action.NameString += action.Action.Method;
+            }
+
             var baseClass = String.IsNullOrWhiteSpace(_options.ControllerBaseClass) ? "" : $" extends {_options.ControllerBaseClass}";
 
             var controllerName = $"{controller.ControllerName}Service";
