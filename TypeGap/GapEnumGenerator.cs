@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using TypeGap.Util;
-using TypeLite;
 using TypeLite.TsModels;
 
 namespace TypeGap
@@ -74,9 +71,26 @@ namespace TypeGap
             }
         }
 
-        protected string GetEnumValue(TsEnumValue e)
+        /// <summary>
+        /// Obtains the string value for the given enum field (<paramref name="enumValue"/>).
+        /// The value obtained takes into account the <see cref="ValueMode"/> specified as the parameter in the constructor.
+        /// </summary>
+        /// <param name="enumGroup">The definitions for the type containing the enum field.</param>
+        /// <param name="enumValue">The field/option of the enum that the values needs to be obtained from.</param>
+        protected virtual string GetEnumValue(EnumGroup enumGroup, TsEnumValue enumValue)
         {
-            return ValueMode == EnumValueMode.Number ? e.Value : "\"" + e.Name + "\"";
+            return GapEnumGenerator.GetEnumValue(ValueMode, enumValue);
+        }
+
+        /// <summary>
+        /// Obtains the string value for the given enum field (<paramref name="enumValue"/>).
+        /// The value obtained depends on the <paramref name="mode"/> specified.
+        /// </summary>
+        /// <param name="mode">The mode used to generate the enum value, it can be the enum field value or the enum field name.</param>
+        /// <param name="enumValue">The field/option of the enum that the values needs to be obtained from.</param>
+        protected static string GetEnumValue(EnumValueMode mode, TsEnumValue enumValue)
+        {
+            return mode == EnumValueMode.Number ? enumValue.Value : "\"" + enumValue.Name + "\"";
         }
 
         public abstract void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup enumObj, out string globalTypeName);
@@ -115,7 +129,7 @@ namespace TypeGap
             foreach (var value in e.Enum.Values)
             {
                 enumWriter.Indent++;
-                enumWriter.WriteLine($"{value.Name} = {GetEnumValue(value)},");
+                enumWriter.WriteLine($"{value.Name} = {this.GetEnumValue(e, value)},");
                 enumWriter.Indent--;
             }
             enumWriter.WriteLine("}");
@@ -132,7 +146,7 @@ namespace TypeGap
 
         public override void GenerateEnum(CustomIndentedTextWriter enumWriter, CustomIndentedTextWriter definitionsWriter, EnumGroup e, out string globalTypeName)
         {
-            enumWriter.WriteLine($"type {e.Name} = {String.Join(" | ", e.Enum.Values.Select(GetEnumValue))};");
+            enumWriter.WriteLine($"type {e.Name} = {String.Join(" | ", e.Enum.Values.Select(enumValue => GetEnumValue(e, enumValue)))};");
             globalTypeName = null;
         }
     }
