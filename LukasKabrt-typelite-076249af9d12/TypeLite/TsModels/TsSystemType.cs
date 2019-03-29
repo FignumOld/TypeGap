@@ -43,7 +43,9 @@ namespace TypeLite.TsModels {
 				case "DateTime":
                 case "DateTimeOffset":
 					this.Kind = SystemTypeKind.Date; break;
-				default:
+                case "TimeSpan":
+                    this.Kind = SystemTypeKind.TimeSpan; break;
+                default:
 					throw new ArgumentException(string.Format("The type '{0}' is not supported system type.", type.FullName));
 			}
 		}

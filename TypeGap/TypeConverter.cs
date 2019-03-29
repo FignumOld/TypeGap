@@ -35,8 +35,9 @@ namespace TypeGap
             _cache.Add(typeof(decimal), "number");
             _cache.Add(typeof(string), "string");
             _cache.Add(typeof(char), "string");
-            _cache.Add(typeof(DateTime), "Date");
-            _cache.Add(typeof(DateTimeOffset), "Date");
+            _cache.Add(typeof(DateTime), "moment.Moment");
+            _cache.Add(typeof(DateTimeOffset), "moment.Moment");
+            _cache.Add(typeof(TimeSpan), "moment.Moment");
             _cache.Add(typeof(byte[]), "string");
             _cache.Add(typeof(Guid), "string");
             _cache.Add(typeof(Exception), "string");

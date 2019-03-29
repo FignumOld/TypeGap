@@ -58,7 +58,7 @@ namespace TypeLite.TsModels {
             var isEnumerable = typeof(IEnumerable).GetDnxCompatible().IsAssignableFrom(type);
 
             // surprisingly  Decimal isn't a primitive type
-            if (isString || type.GetDnxCompatible().IsPrimitive || type.FullName == "System.Decimal" || type.FullName == "System.DateTime" || type.FullName == "System.DateTimeOffset" || type.FullName == "System.SByte") {
+            if (isString || type.GetDnxCompatible().IsPrimitive || type.FullName == "System.Decimal" || type.FullName == "System.DateTime" || type.FullName == "System.DateTimeOffset" || type.FullName == "System.SByte" || type.FullName == "System.TimeSpan") {
                 return TsTypeFamily.System;
             } else if (isEnumerable) {
                 return TsTypeFamily.Collection;

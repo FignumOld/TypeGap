@@ -15,8 +15,10 @@ namespace TypeLite.Extensions {
 		/// <param name="type">The value to convert</param>
 		/// <returns>system type identifier for TypeScript</returns>
 		public static string ToTypeScriptString(this SystemTypeKind type) {
-			switch (type) {
-				case SystemTypeKind.Date: return "Date";
+			switch (type)
+            {
+                case SystemTypeKind.TimeSpan:
+                case SystemTypeKind.Date: return "moment.Moment";
 				case SystemTypeKind.Bool: return "boolean";
 			}
 
