@@ -416,7 +416,11 @@ namespace TypeGap
 
             postParam = post;
             modelParam = null;
-            return parameters.Except(new[] { post }).ToArray();
+
+            return (post == null ?
+                    parameters :
+                    parameters.Except(new[] { Nullable.GetUnderlyingType(post.ParameterType) != null ? null : post }))
+                .ToArray();
         }
 
         protected virtual string JoinUrls(params string[] url)
@@ -508,7 +512,7 @@ namespace TypeGap
 
             foreach (var q in getParameters.Except(routeParameters))
             {
-                queryJs.Add($"[{GetParamExecString(q)}, \"{q.ParameterName}\", {q.IsOptional.ToString().ToLower()}]");
+                queryJs.Add($"[{GetParamExecString(q)}, \"{q.ParameterName}\", {(q.IsOptional || Nullable.GetUnderlyingType(q.ParameterType) != null).ToString().ToLower()}]");
             }
 
             return $"_build_url(this._basePath, [{String.Join(", ", routeJs)}], [{String.Join(", ", queryJs)}])";

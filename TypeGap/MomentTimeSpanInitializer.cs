@@ -12,12 +12,12 @@ namespace TypeGap
 
         public override string ToTsType(string objectName)
         {
-            return $"moment.utc({objectName}, \"hh:mm:ss\")";
+            return $"moment.utc({objectName}, \"HH:mm:ss\")";
         }
 
         public override string FromTsType(string objectName)
         {
-            return $"moment({objectName}).format(\"hh:mm:ss\")";
+            return $"moment({objectName}).format(\"HH:mm:ss\")";
         }
     }
 }
