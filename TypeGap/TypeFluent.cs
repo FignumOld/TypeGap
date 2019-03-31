@@ -93,7 +93,7 @@ namespace TypeGap
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
 
-            if (options != null && options.SupportedTypes.Count > 0)
+            if (options != null)
             {
                 foreach (var supportedType in options.SupportedTypes)
                 {

@@ -50,10 +50,7 @@ namespace TypeGap
 
             foreach (var externalCacheValue in registerExternalCacheValues)
             {
-                var registeredType = externalCacheValue.Key;
-                var registeredValue = externalCacheValue.Value;
-
-                AddReplaceCache(registeredType, registeredValue);
+                AddReplaceCache(externalCacheValue.Key, externalCacheValue.Value);
             }
         }
 
