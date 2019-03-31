@@ -92,10 +92,19 @@ namespace TypeGap
 
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
+
+            if (options != null && options.SupportedTypes.Count > 0)
+            {
+                foreach (var supportedType in options.SupportedTypes)
+                {
+                    fluent.WithConvertor(c => supportedType.Value, supportedType.Key);
+                }
+            }
+
             fluent.WithIndentation(_indent);
             fluent.WithModelVisitor(_modelVisitor);
 
-            var converter = new TypeConverter(_namespace, fluent);
+            var converter = new TypeConverter(_namespace, fluent, options?.SupportedTypes ?? new Dictionary<Type, string>() );
             fluent.WithDictionaryMemberFormatter(converter);
 
             if (!string.IsNullOrEmpty(_namespace))

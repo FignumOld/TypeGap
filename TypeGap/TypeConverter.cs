@@ -35,19 +35,26 @@ namespace TypeGap
             _cache.Add(typeof(decimal), "number");
             _cache.Add(typeof(string), "string");
             _cache.Add(typeof(char), "string");
-            _cache.Add(typeof(DateTime), "moment.Moment");
-            _cache.Add(typeof(DateTimeOffset), "moment.Moment");
-            _cache.Add(typeof(TimeSpan), "moment.Moment");
+            _cache.Add(typeof(DateTime), "Date");
+            _cache.Add(typeof(DateTimeOffset), "Date");
             _cache.Add(typeof(byte[]), "string");
             _cache.Add(typeof(Guid), "string");
             _cache.Add(typeof(Exception), "string");
             _cache.Add(typeof(void), "void");
         }
 
-        public TypeConverter(string globalNamespace, TypeScriptFluent fluent)
+        public TypeConverter(string globalNamespace, TypeScriptFluent fluent, Dictionary<Type, string> registerExternalCacheValues)
         {
             _globalNamespace = globalNamespace;
             _fluent = fluent;
+
+            foreach (var externalCacheValue in registerExternalCacheValues)
+            {
+                var registeredType = externalCacheValue.Key;
+                var registeredValue = externalCacheValue.Value;
+
+                AddReplaceCache(registeredType, registeredValue);
+            }
         }
 
         public static bool IsComplexType(Type clrType)
@@ -73,6 +80,14 @@ namespace TypeGap
             }
 
             return fullName;
+        }
+
+        private void AddReplaceCache(Type type, string tsType)
+        {
+            if (!_cache.ContainsKey(type))
+                _cache.Add(type, tsType);
+            else
+                _cache[type] = tsType;
         }
 
         public Type UnwrapType(Type clrType)

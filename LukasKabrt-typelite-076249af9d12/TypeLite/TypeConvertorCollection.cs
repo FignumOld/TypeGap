@@ -25,14 +25,24 @@ namespace TypeLite {
 		/// <param name="convertor">The converter to register</param>
 		public void RegisterTypeConverter<TFor>(TypeConvertor convertor) {
 			_convertors[typeof(TFor)] = convertor;
-		}
+        }
 
-		/// <summary>
-		/// Checks whether any converter is registered for the specific Type
-		/// </summary>
-		/// <param name="type">The type to check</param>
-		/// <returns>true if a converter is registered for the specific Type otherwise return false</returns>
-		public bool IsConvertorRegistered(Type type) {
+        /// <summary>
+        /// Registers the converter for the specific Type
+        /// </summary>
+        /// <param name="convertor">The converter to register</param>
+        /// <param name="type">The type to register the converter for.</param>
+        public void RegisterTypeConverter(TypeConvertor convertor, Type type)
+        {
+            _convertors[type] = convertor;
+        }
+
+        /// <summary>
+        /// Checks whether any converter is registered for the specific Type
+        /// </summary>
+        /// <param name="type">The type to check</param>
+        /// <returns>true if a converter is registered for the specific Type otherwise return false</returns>
+        public bool IsConvertorRegistered(Type type) {
 			return _convertors.ContainsKey(type);
 		}
 

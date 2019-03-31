@@ -92,6 +92,12 @@ namespace TypeGap
         public string Options { get; set; }
     }
 
+    public class SupportedType
+    {
+        public string TsType { get; set; }
+        public Type MainType { get; set; }
+    }
+
     public class GapApiGeneratorOptions
     {
         public Func<ApiActionDesc, string> FnActionName { get; set; } = (action) =>
@@ -116,6 +122,7 @@ namespace TypeGap
         public bool EnableDeepParameterCloning { get; set; } = true;
         public string OptionsClassName { get; set; } = "IExtendedAjaxSettings";
         public List<AdvancedTypeInitializer> TypeInitializers { get; set; } = new List<AdvancedTypeInitializer>();
+        public Dictionary<Type, string> SupportedTypes { get; set; } = new Dictionary<Type, string>();
     }
 
     public class GapApiGenerator

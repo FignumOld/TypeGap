@@ -130,6 +130,19 @@ namespace TypeLite {
         }
 
         /// <summary>
+        /// Registers the converter for the specific Type
+        /// </summary>
+        /// <param name="convertor">The converter to register</param>
+        /// <param name="type">The type to register the converter for.</param>
+        /// <remarks>
+        /// If a converter for the type is already registered, it is overwritten with the new value.
+        /// </remarks>
+        public void RegisterTypeConvertor(TypeConvertor convertor, Type type)
+        {
+            _typeConvertors.RegisterTypeConverter(convertor, type);
+        }
+
+        /// <summary>
         /// Sets the formatter for class member identifiers.
         /// </summary>
         /// <param name="formatter">The formatter to register.</param>
