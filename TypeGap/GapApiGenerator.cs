@@ -416,11 +416,7 @@ namespace TypeGap
 
             postParam = post;
             modelParam = null;
-
-            return (post == null ?
-                    parameters :
-                    parameters.Except(new[] { Nullable.GetUnderlyingType(post.ParameterType) != null ? null : post }))
-                .ToArray();
+            return parameters.Except(new[] { post }).ToArray();
         }
 
         protected virtual string JoinUrls(params string[] url)
