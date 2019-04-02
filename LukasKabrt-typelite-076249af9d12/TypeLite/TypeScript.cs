@@ -97,14 +97,14 @@ namespace TypeLite {
 			if (model is TsClass || model is TsEnum)
 				return new TypeScriptFluentModuleMember(this, model);
 			throw new InvalidOperationException("The type must be a class or an enum");
-        }
+		}
 
-        /// <summary>
-        /// Adds all classes annotated with the TsClassAttribute from an assembly to the model.
-        /// </summary>
-        /// <param name="assembly">The assembly with classes to add.</param>
-        /// <returns>Instance of the TypeScriptFluent that enables fluent configuration.</returns>
-        public TypeScriptFluent For(Assembly assembly) {
+		/// <summary>
+		/// Adds all classes annotated with the TsClassAttribute from an assembly to the model.
+		/// </summary>
+		/// <param name="assembly">The assembly with classes to add.</param>
+		/// <returns>Instance of the TypeScriptFluent that enables fluent configuration.</returns>
+		public TypeScriptFluent For(Assembly assembly) {
 			_modelBuilder.Add(assembly);
 			return this;
 		}
