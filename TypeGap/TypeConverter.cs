@@ -51,7 +51,8 @@ namespace TypeGap
 
         public static bool IsComplexType(Type clrType)
         {
-            return !_cache.ContainsKey(clrType);
+            var underlyingType = Nullable.GetUnderlyingType(clrType);
+            return  !_cache.ContainsKey(underlyingType ?? clrType);
         }
 
         private string GetFullName(Type clrType)
