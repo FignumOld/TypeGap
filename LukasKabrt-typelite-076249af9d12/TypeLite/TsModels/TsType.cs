@@ -49,7 +49,7 @@ namespace TypeLite.TsModels {
         /// </summary>
         /// <param name="type">The CLR type to get TsTypeFamily of</param>
         /// <returns>TsTypeFamily of the CLR type</returns>
-        internal static TsTypeFamily GetTypeFamily(System.Type type) {
+        public static TsTypeFamily GetTypeFamily(System.Type type) {
             if (type.IsNullable()) {
                 return TsType.GetTypeFamily(type.GetNullableValueType());
             }
