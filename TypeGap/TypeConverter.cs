@@ -1,4 +1,4 @@
-﻿using TypeGap.Extensions;
+using TypeGap.Extensions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -140,14 +140,14 @@ namespace TypeGap
                 return "any[]";
             }
 
-            if (clrType.Namespace == "System" || clrType.Namespace.StartsWith("System."))
-                return "any";
-
             if (clrType.GetDnxCompatible().IsEnum)
             {
                 _fluent.ModelBuilder.Add(clrType);
                 return GetFullName(clrType);
             }
+
+            if (clrType.Namespace == "System" || clrType.Namespace.StartsWith("System."))
+                return "any";
 
             if (clrType.GetDnxCompatible().IsClass || clrType.GetDnxCompatible().IsInterface)
             {
