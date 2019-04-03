@@ -89,9 +89,10 @@ namespace TypeGap.Util
                 foreach (var pmInfo in parameters)
                 {
                     var p = new ApiParamDesc();
-                    p.IsOptional = pmInfo.IsOptional || Nullable.GetUnderlyingType(pmInfo.ParameterType) != null;
+                    var nullableBase = Nullable.GetUnderlyingType(pmInfo.ParameterType);
+                    p.IsOptional = pmInfo.IsOptional || nullableBase != null;
                     p.ParameterName = pmInfo.Name;
-                    p.ParameterType = pmInfo.ParameterType;
+                    p.ParameterType = nullableBase ?? pmInfo.ParameterType;
                     if (GetAttributes(pmInfo, "FromUri").Length > 0)
                         p.Mode = ApiParameterMode.FromUri;
                     else if (GetAttributes(pmInfo, "FromBody").Length > 0)

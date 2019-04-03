@@ -508,7 +508,7 @@ namespace TypeGap
 
             foreach (var q in getParameters.Except(routeParameters))
             {
-                queryJs.Add($"[{GetParamExecString(q)}, \"{q.ParameterName}\", {(q.IsOptional || Nullable.GetUnderlyingType(q.ParameterType) != null).ToString().ToLower()}]");
+                queryJs.Add($"[{GetParamExecString(q)}, \"{q.ParameterName}\", {q.IsOptional.ToString().ToLower()}]");
             }
 
             return $"_build_url(this._basePath, [{String.Join(", ", routeJs)}], [{String.Join(", ", queryJs)}])";
