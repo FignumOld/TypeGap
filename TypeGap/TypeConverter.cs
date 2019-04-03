@@ -140,7 +140,7 @@ namespace TypeGap
                 return "any[]";
             }
 
-            if (clrType.Namespace.StartsWith("System."))
+            if (clrType.Namespace == "System" || clrType.Namespace.StartsWith("System."))
                 return "any";
 
             if (clrType.GetDnxCompatible().IsEnum)
