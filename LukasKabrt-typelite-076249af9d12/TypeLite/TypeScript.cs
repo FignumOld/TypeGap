@@ -254,19 +254,18 @@ namespace TypeLite {
 		public TypeScriptFluent WithConvertor<TFor>(TypeConvertor convertor) {
 			_scriptGenerator.RegisterTypeConvertor<TFor>(convertor);
 			return this;
-        }
+		}
 
-        /// <summary>
-        /// Registers a converter for the specific type
-        /// </summary>
-        /// <param name="convertor">The converter to register</param>
-        /// <param name="type">The type to register the converter for.</param>
-        /// <returns>Instance of the TypeScriptFluent that enables fluent configuration.</returns>
-        public TypeScriptFluent WithConvertor(TypeConvertor convertor, Type type)
-        {
-            _scriptGenerator.RegisterTypeConvertor(convertor, type);
-            return this;
-        }
+		/// <summary>
+		/// Registers a converter for the specific type
+		/// </summary>
+		/// <param name="typeFor">The type to register the converter for.</param>
+		/// <param name="convertor">The converter to register</param>
+		/// <returns>Instance of the TypeScriptFluent that enables fluent configuration.</returns>
+		public TypeScriptFluent WithConvertor(Type typeFor, TypeConvertor convertor) {
+			_scriptGenerator.RegisterTypeConvertor(typeFor, convertor);
+			return this;
+		}
 
         /// <summary>
         /// Registers a model visitor which will trigger for each entity added to the model

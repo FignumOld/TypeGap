@@ -30,6 +30,7 @@ namespace TypeGap
         private GapEnumGenerator _enumGenerator = new RegularEnumGenerator(false, EnumValueMode.Number);
         private string _indent = "    ";
         private ITsModelVisitor _modelVisitor;
+        private Dictionary<Type, string> _typeConversions;
 
         public TypeFluent Add(Type t)
         {
@@ -93,18 +94,14 @@ namespace TypeGap
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
 
-            if (options != null)
-            {
-                foreach (var supportedType in options.SupportedTypes)
-                {
-                    fluent.WithConvertor(c => supportedType.Value, supportedType.Key);
-                }
-            }
+            if (_typeConversions != null)
+                foreach (var conversion in _typeConversions)
+                    fluent.WithConvertor(conversion.Key, t => conversion.Value);
 
             fluent.WithIndentation(_indent);
             fluent.WithModelVisitor(_modelVisitor);
 
-            var converter = new TypeConverter(_namespace, fluent, options?.SupportedTypes ?? new Dictionary<Type, string>() );
+            var converter = new TypeConverter(_namespace, fluent, _typeConversions);
             fluent.WithDictionaryMemberFormatter(converter);
 
             if (!string.IsNullOrEmpty(_namespace))
@@ -160,6 +157,12 @@ namespace TypeGap
         public TypeFluent WithModelVisitor(ITsModelVisitor visitor)
         {
             _modelVisitor = visitor;
+            return this;
+        }
+
+        public TypeFluent WithTypeConversions(Dictionary<Type, string> typeConversions)
+        {
+            _typeConversions = typeConversions;
             return this;
         }
 
