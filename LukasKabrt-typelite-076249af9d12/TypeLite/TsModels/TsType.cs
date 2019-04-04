@@ -10,7 +10,7 @@ namespace TypeLite.TsModels {
     /// <summary>
     /// Represents a type in the code model.
     /// </summary>
-    [DebuggerDisplay("TsType - Type: {ClrType}")]
+    [DebuggerDisplay("TsType - Type: {Type}")]
     public class TsType {
         /// <summary>
         /// Gets the CLR type represented by this instance of the TsType.
