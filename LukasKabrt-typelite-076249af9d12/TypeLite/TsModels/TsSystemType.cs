@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -43,8 +43,6 @@ namespace TypeLite.TsModels {
 				case "DateTime":
 				case "DateTimeOffset":
 					this.Kind = SystemTypeKind.Date; break;
-				case "TimeSpan":
-					this.Kind = SystemTypeKind.TimeSpan; break;
 				default:
 					throw new ArgumentException(string.Format("The type '{0}' is not supported system type.", type.FullName));
 			}

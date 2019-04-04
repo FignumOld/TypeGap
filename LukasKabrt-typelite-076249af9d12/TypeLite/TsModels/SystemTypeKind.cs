@@ -26,11 +26,6 @@ namespace TypeLite.TsModels {
 		/// <summary>
 		/// Date
 		/// </summary>
-		Date = 4,
-
-		/// <summary>
-		/// TimeSpan
-		/// </summary>
-		TimeSpan = 5
+		Date = 4
 	}
 }
