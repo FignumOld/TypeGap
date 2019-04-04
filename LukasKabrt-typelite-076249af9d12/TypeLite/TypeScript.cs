@@ -267,6 +267,10 @@ namespace TypeLite {
 			return this;
 		}
 
+		public bool IsTypeConvertorRegistered(Type typeFor) {
+			return _scriptGenerator.IsTypeConvertorRegistered(typeFor);
+		}
+
         /// <summary>
         /// Registers a model visitor which will trigger for each entity added to the model
         /// </summary>

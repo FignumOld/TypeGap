@@ -10,7 +10,7 @@ namespace TypeLite.TsModels {
     /// <summary>
     /// Represents a type in the code model.
     /// </summary>
-    [DebuggerDisplay("TsType - Type: {ClrType}")]
+    [DebuggerDisplay("TsType - Type: {Type}")]
     public class TsType {
         /// <summary>
         /// Gets the CLR type represented by this instance of the TsType.
@@ -49,7 +49,7 @@ namespace TypeLite.TsModels {
         /// </summary>
         /// <param name="type">The CLR type to get TsTypeFamily of</param>
         /// <returns>TsTypeFamily of the CLR type</returns>
-        internal static TsTypeFamily GetTypeFamily(System.Type type) {
+        public static TsTypeFamily GetTypeFamily(System.Type type) {
             if (type.IsNullable()) {
                 return TsType.GetTypeFamily(type.GetNullableValueType());
             }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -195,8 +195,14 @@ namespace TypeGap
                 if (clrTypeToUse.GetDnxCompatible().GetCustomAttribute(typeof(CompilerGeneratedAttribute)) != null)
                     continue;
 
-                if (clrTypeToUse.Namespace.StartsWith("System"))
+                // No need to add types which TypeLite considers built-in
+                if (TsType.GetTypeFamily(clrTypeToUse) == TsTypeFamily.System)
                     continue;
+
+                // Skip all other System types unless a custom converter is registered for it
+                if (clrTypeToUse.Namespace.StartsWith("System"))
+                    if (!generator.IsTypeConvertorRegistered(clrTypeToUse))
+                        continue;
 
                 if (clrTypeToUse.IsIDictionary())
                     continue;

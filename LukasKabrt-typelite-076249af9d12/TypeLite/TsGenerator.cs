@@ -129,6 +129,10 @@ namespace TypeLite {
             _typeConvertors.RegisterTypeConverter<TFor>(convertor);
         }
 
+        public bool IsTypeConvertorRegistered(Type typeFor) {
+            return _typeConvertors.IsConvertorRegistered(typeFor);
+        }
+
         /// <summary>
         /// Registers the converter for the specific Type
         /// </summary>
