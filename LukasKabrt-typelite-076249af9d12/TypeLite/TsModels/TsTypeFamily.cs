@@ -7,7 +7,7 @@ namespace TypeLite.TsModels {
 	/// <summary>
 	/// Represents a type of the TsType
 	/// </summary>
-	internal enum TsTypeFamily {
+	public enum TsTypeFamily {
 		/// <summary>
 		/// System type
 		/// </summary>
