@@ -15,6 +15,7 @@ namespace TypeGap
         private readonly string _globalNamespace;
         private readonly TypeScriptFluent _fluent;
         private static readonly Dictionary<Type, string> _cache;
+        private readonly Dictionary<Type, string> _customConversions;
 
         static TypeConverter()
         {
@@ -43,10 +44,11 @@ namespace TypeGap
             _cache.Add(typeof(void), "void");
         }
 
-        public TypeConverter(string globalNamespace, TypeScriptFluent fluent)
+        public TypeConverter(string globalNamespace, TypeScriptFluent fluent, Dictionary<Type, string> customConversions)
         {
             _globalNamespace = globalNamespace;
             _fluent = fluent;
+            _customConversions = customConversions;
         }
 
         public static bool IsComplexType(Type clrType)
@@ -94,6 +96,11 @@ namespace TypeGap
             string result;
 
             clrType = UnwrapType(clrType);
+
+            if (_customConversions != null && _customConversions.TryGetValue(clrType, out result))
+            {
+                return result;
+            }
 
             if (_cache.TryGetValue(clrType, out result))
             {

@@ -28,6 +28,15 @@ namespace TypeLite {
 		}
 
 		/// <summary>
+		/// Registers the converter for the specific Type
+		/// </summary>
+		/// <param name="typeFor">The type to register the converter for.</param>
+		/// <param name="convertor">The converter to register</param>
+		public void RegisterTypeConverter(Type typeFor, TypeConvertor convertor) {
+			_convertors[typeFor] = convertor;
+		}
+
+		/// <summary>
 		/// Checks whether any converter is registered for the specific Type
 		/// </summary>
 		/// <param name="type">The type to check</param>

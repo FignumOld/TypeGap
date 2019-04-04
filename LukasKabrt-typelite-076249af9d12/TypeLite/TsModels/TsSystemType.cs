@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -27,7 +27,7 @@ namespace TypeLite.TsModels {
 				case "Char":
 					this.Kind = SystemTypeKind.String; break;
 				case "Byte":
-                case "SByte":
+				case "SByte":
 				case "Int16":
 				case "Int32":
 				case "Int64":
@@ -41,7 +41,7 @@ namespace TypeLite.TsModels {
 				case "UIntPtr":
 					this.Kind = SystemTypeKind.Number; break;
 				case "DateTime":
-                case "DateTimeOffset":
+				case "DateTimeOffset":
 					this.Kind = SystemTypeKind.Date; break;
 				default:
 					throw new ArgumentException(string.Format("The type '{0}' is not supported system type.", type.FullName));

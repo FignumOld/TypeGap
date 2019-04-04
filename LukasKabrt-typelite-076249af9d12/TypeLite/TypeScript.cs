@@ -256,6 +256,17 @@ namespace TypeLite {
 			return this;
 		}
 
+		/// <summary>
+		/// Registers a converter for the specific type
+		/// </summary>
+		/// <param name="typeFor">The type to register the converter for.</param>
+		/// <param name="convertor">The converter to register</param>
+		/// <returns>Instance of the TypeScriptFluent that enables fluent configuration.</returns>
+		public TypeScriptFluent WithConvertor(Type typeFor, TypeConvertor convertor) {
+			_scriptGenerator.RegisterTypeConvertor(typeFor, convertor);
+			return this;
+		}
+
 		public bool IsTypeConvertorRegistered(Type typeFor) {
 			return _scriptGenerator.IsTypeConvertorRegistered(typeFor);
 		}
