@@ -30,7 +30,6 @@ namespace TypeGap
         private GapEnumGenerator _enumGenerator = new RegularEnumGenerator(false, EnumValueMode.Number);
         private string _indent = "    ";
         private ITsModelVisitor _modelVisitor;
-        private Dictionary<Type, string> _typeConversions;
 
         public TypeFluent Add(Type t)
         {
@@ -94,15 +93,10 @@ namespace TypeGap
 
             TypeScriptFluent fluent = new TypeScriptFluent();
             fluent.WithConvertor<Guid>(c => "string");
-
-            if (_typeConversions != null)
-                foreach (var conversion in _typeConversions)
-                    fluent.WithConvertor(conversion.Key, t => conversion.Value);
-
             fluent.WithIndentation(_indent);
             fluent.WithModelVisitor(_modelVisitor);
 
-            var converter = new TypeConverter(_namespace, fluent, _typeConversions);
+            var converter = new TypeConverter(_namespace, fluent);
             fluent.WithDictionaryMemberFormatter(converter);
 
             if (!string.IsNullOrEmpty(_namespace))
@@ -161,12 +155,6 @@ namespace TypeGap
             return this;
         }
 
-        public TypeFluent WithTypeConversions(Dictionary<Type, string> typeConversions)
-        {
-            _typeConversions = typeConversions;
-            return this;
-        }
-
         public void Build(string outputPath, GapApiGeneratorOptions options = null)
         {
             WriteFile(outputPath, Build(options));
@@ -196,14 +184,8 @@ namespace TypeGap
                 if (clrTypeToUse.GetDnxCompatible().GetCustomAttribute(typeof(CompilerGeneratedAttribute)) != null)
                     continue;
 
-                // No need to add types which TypeLite considers built-in
-                if (TsType.GetTypeFamily(clrTypeToUse) == TsTypeFamily.System)
-                    continue;
-
-                // Skip all other System types unless a custom converter is registered for it
                 if (clrTypeToUse.Namespace.StartsWith("System"))
-                    if (!generator.IsTypeConvertorRegistered(clrTypeToUse))
-                        continue;
+                    continue;
 
                 if (clrTypeToUse.IsIDictionary())
                     continue;
