@@ -50,7 +50,8 @@ namespace TypeGap
 
         public SignalRHubDesc AddSignalRHub(Type t)
         {
-            if (t.GetDnxCompatible().BaseType == null || t.GetDnxCompatible().BaseType.FullName == null || !t.GetDnxCompatible().BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE))
+            if (t.GetDnxCompatible().BaseType == null || t.GetDnxCompatible().BaseType.FullName == null ||
+                !(t.GetDnxCompatible().BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE) || t.GetDnxCompatible().BaseType.FullName.Contains(SignalRGenerator.HUB_TYPE_CORE)))
                 throw new ArgumentException("Type must directly derive from the Hub type.");
 
             var desc = new SignalRHubDesc(t);

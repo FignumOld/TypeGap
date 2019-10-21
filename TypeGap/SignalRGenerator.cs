@@ -26,7 +26,8 @@ namespace TypeGap
         {
             get
             {
-                var attribute = HubType.GetDnxCompatible().GetCustomAttributes().Where(ca => ca.GetType().FullName == "Microsoft.AspNet.SignalR.Hubs.HubNameAttribute").FirstOrDefault();
+                var attribute = HubType.GetDnxCompatible().GetCustomAttributes().Where(ca =>
+                    ca.GetType().Name == "HubNameAttribute").FirstOrDefault();
                 if (attribute == null)
                     return null;
                 var propInfo = attribute.GetType().GetDnxCompatible().GetProperty("HubName");
@@ -38,11 +39,13 @@ namespace TypeGap
     public class SignalRGenerator
     {
         internal const string HUB_TYPE = "Microsoft.AspNet.SignalR.Hub";
+        internal const string HUB_TYPE_CORE = "Microsoft.AspNetCore.SignalR.Hub";
 
         private string GenerateHubs(Assembly assembly, TypeConverter converter)
         {
             var hubs = assembly.GetTypes()
-                .Where(t => t.GetDnxCompatible().BaseType != null && t.GetDnxCompatible().BaseType.FullName != null && t.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE))
+                .Where(t => t.GetDnxCompatible().BaseType != null && t.GetDnxCompatible().BaseType.FullName != null &&
+                            (t.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE) || t.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE_CORE)))
                 .OrderBy(t => t.FullName)
                 .ToList();
 
@@ -98,7 +101,8 @@ namespace TypeGap
 
         private void GenerateHubInterfaces(SignalRHubDesc hub, ScriptBuilder scriptBuilder, TypeConverter converter)
         {
-            if (!hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE)) throw new ArgumentException("The supplied type does not appear to be a SignalR hub.", "hubType");
+            if (!(hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE) || hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE_CORE)))
+                throw new ArgumentException("The supplied type does not appear to be a SignalR hub.", "hubType");
             // Build the client interface
             scriptBuilder.AppendLineIndented(string.Format("export interface I{0}Client {{", hub.HubClassName));
             using (scriptBuilder.IncreaseIndentation())
@@ -120,6 +124,13 @@ namespace TypeGap
             {
                 scriptBuilder.AppendLineIndented($"/* function {hub.HubClassName}Client_CreateHubProxy not generated as hub type {hub.HubType.FullName} does not have a HubNameAttribute or the hub name is an empty string. */");
             }
+            else if (hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE_CORE))//asp core support
+            {
+                scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_CreateHubProxy(): signalR.HubConnection {{");
+                using (scriptBuilder.IncreaseIndentation())
+                    scriptBuilder.AppendLineIndented($"return new signalR.HubConnectionBuilder().withUrl(\"/signalr/{hub.HubSignalRName}\").build();");
+                scriptBuilder.AppendLineIndented("}");
+            }
             else
             {
                 scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_CreateHubProxy(connection: SignalR.Hub.Connection): SignalR.Hub.Proxy {{");
@@ -134,6 +145,15 @@ namespace TypeGap
             {
                 scriptBuilder.AppendLineIndented($"/* function {hub.HubClassName}Client_BindProxy not generated as hub doesn't derive from Hub<T> */");
             }
+            else if (hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE_CORE))//asp core support
+            {
+                scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_BindProxy(proxy: signalR.HubConnection, client: I{hub.HubClassName}Client): void {{");
+                using (scriptBuilder.IncreaseIndentation())
+                {
+                    GenerateMethods(scriptBuilder, hub, converter, true, (mi, tc) => GenerateMethodProxyBinding(mi, tc, hub));
+                }
+                scriptBuilder.AppendLineIndented("}");
+            }
             else
             {
                 scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_BindProxy(proxy: SignalR.Hub.Proxy, client: I{hub.HubClassName}Client): void {{");
@@ -147,10 +167,15 @@ namespace TypeGap
 
             // Build the interface containing the SERVER methods
             scriptBuilder.AppendLineIndented($"interface I{hub.HubClassName} {{");
-            using (scriptBuilder.IncreaseIndentation())
+
+            if (hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE))
             {
-                GenerateMethods(scriptBuilder, hub, converter, false, (mi, tc) => GenerateMethodDeclaration(mi, tc, hub, false));
+                using (scriptBuilder.IncreaseIndentation())
+                {
+                    GenerateMethods(scriptBuilder, hub, converter, false, (mi, tc) => GenerateMethodDeclaration(mi, tc, hub, false));
+                }
             }
+
             scriptBuilder.AppendLineIndented("}");
             scriptBuilder.AppendLine();
             // Build the proxy class (represents the proxy generated by signalR).
