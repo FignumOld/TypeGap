@@ -124,6 +124,13 @@ namespace TypeGap
             {
                 scriptBuilder.AppendLineIndented($"/* function {hub.HubClassName}Client_CreateHubProxy not generated as hub type {hub.HubType.FullName} does not have a HubNameAttribute or the hub name is an empty string. */");
             }
+            else if (hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE_CORE))//asp core support
+            {
+                scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_CreateHubProxy(): signalR.HubConnection {{");
+                using (scriptBuilder.IncreaseIndentation())
+                    scriptBuilder.AppendLineIndented($"return new signalR.HubConnectionBuilder().withUrl(\"/signalr/{hub.HubSignalRName}\").build();");
+                scriptBuilder.AppendLineIndented("}");
+            }
             else
             {
                 scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_CreateHubProxy(connection: SignalR.Hub.Connection): SignalR.Hub.Proxy {{");
@@ -137,6 +144,15 @@ namespace TypeGap
             if (!hub.HubType.GetDnxCompatible().BaseType.GetDnxCompatible().IsGenericType)
             {
                 scriptBuilder.AppendLineIndented($"/* function {hub.HubClassName}Client_BindProxy not generated as hub doesn't derive from Hub<T> */");
+            }
+            else if (hub.HubType.GetDnxCompatible().BaseType.FullName.Contains(HUB_TYPE_CORE))//asp core support
+            {
+                scriptBuilder.AppendLineIndented($"export function {hub.HubClassName}Client_BindProxy(proxy: signalR.HubConnection, client: I{hub.HubClassName}Client): void {{");
+                using (scriptBuilder.IncreaseIndentation())
+                {
+                    GenerateMethods(scriptBuilder, hub, converter, true, (mi, tc) => GenerateMethodProxyBinding(mi, tc, hub));
+                }
+                scriptBuilder.AppendLineIndented("}");
             }
             else
             {
