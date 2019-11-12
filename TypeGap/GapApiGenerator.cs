@@ -542,7 +542,7 @@ namespace TypeGap
 
             if (guid == null)
                 using (MD5 md5 = MD5.Create())
-                    guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(t.AssemblyQualifiedName)).Select(b => b.ToString("x2")));
+                    guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(t.FullName + "," + t.GetDnxCompatible().Assembly.GetName().Name)).Select(b => b.ToString("x2")));
 
             if (it != null && bodyLookup.ContainsKey(guid))
                 return guid;
