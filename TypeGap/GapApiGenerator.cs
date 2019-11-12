@@ -540,9 +540,19 @@ namespace TypeGap
             var it = itList.FirstOrDefault();
             var guid = it?.GetGroupNameIfCanConvert(t);
 
+            string getFullTypeName(Type type) // gets the full type name without any assembly version info. Needed because type.FullName includes assembly version for generic type arguments
+            {
+                var dtype = type.GetDnxCompatible();
+                if (!dtype.IsGenericType)
+                    return dtype.FullName + ", " + dtype.Assembly.GetName().Name;
+                return dtype.GetGenericTypeDefinition().FullName + "["
+                    + string.Join(",", dtype.GetGenericArguments().Select(ga => "[" + getFullTypeName(ga) + "]"))
+                    + "]";
+            }
+
             if (guid == null)
                 using (MD5 md5 = MD5.Create())
-                    guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(t.FullName + "," + t.GetDnxCompatible().Assembly.GetName().Name)).Select(b => b.ToString("x2")));
+                    guid = string.Join(string.Empty, md5.ComputeHash(Encoding.UTF8.GetBytes(getFullTypeName(t))).Select(b => b.ToString("x2")));
 
             if (it != null && bodyLookup.ContainsKey(guid))
                 return guid;
