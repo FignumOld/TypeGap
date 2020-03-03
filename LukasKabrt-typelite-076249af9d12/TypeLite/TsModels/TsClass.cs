@@ -60,7 +60,8 @@ namespace TypeLite.TsModels {
 
             this.Properties = dnxCompatible
                 .GetProperties()
-                .Where(pi => pi.DeclaringType == this.Type)
+                .Where(pi => pi.DeclaringType == this.Type
+                    && pi.GetSetMethod() != null) // skip read-only
                 .Select(pi => new TsProperty(pi))
                 .ToList();
 
