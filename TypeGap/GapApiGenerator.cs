@@ -498,6 +498,8 @@ namespace TypeGap
                 {
                     case TypeCode.DateTime:
                     case TypeCode.Object:
+                        if (get.ParameterType == typeof(Guid))
+                            break;
                         throw new Exception($"In action '{action.ActionName}' parameter type '{get.ParameterType.Name}' is not suitable " +
                                             $"as a route parameter for template '{template}'. (Type code: {typeCode})");
                 }
