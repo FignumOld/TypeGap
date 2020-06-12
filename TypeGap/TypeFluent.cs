@@ -109,7 +109,7 @@ namespace TypeGap
                 fluent.WithModuleNameFormatter(m => _namespace);
 
             ProcessTypes(_general, fluent);
-            fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
+            var model = fluent.ModelBuilder.Build(); // this is to fix up manually added types before GapApiGenerator
 
             var apiGen = new GapApiGenerator(converter, _indent, options ?? new GapApiGeneratorOptions());
             apiGen.WriteServices(_apis.ToArray(), servicesWriter);
@@ -120,7 +120,7 @@ namespace TypeGap
             var tsClassDefinitions = fluent.Generate(TsGeneratorOutput.Properties | TsGeneratorOutput.Fields);
             definitionsWriter.Write(tsClassDefinitions);
 
-            _enumGenerator.WriteEnums(enumsWriter, globalsWriter, definitionsWriter, fluent.ModelBuilder.Build().Enums, converter);
+            _enumGenerator.WriteEnums(enumsWriter, globalsWriter, definitionsWriter, model.Enums, converter);
 
             string prepended = _generateNotice ? Resx.GeneratedNotice + "\r\n\r\n" : "";
             prepended +=
