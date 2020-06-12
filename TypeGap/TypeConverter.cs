@@ -1,4 +1,4 @@
-using TypeGap.Extensions;
+﻿using TypeGap.Extensions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -86,6 +86,11 @@ namespace TypeGap
             if (clrType.IsGenericTask())
             {
                 clrType = clrType.GetUnderlyingTaskType();
+            }
+
+            if (clrType.GetDnxCompatible().IsGenericType && clrType.GetGenericTypeDefinition().FullName == "Microsoft.AspNetCore.Mvc.ActionResult`1")
+            {
+                clrType = clrType.GetDnxCompatible().GetGenericArguments().Single();
             }
 
             return clrType;
